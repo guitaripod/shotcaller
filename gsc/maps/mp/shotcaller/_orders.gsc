@@ -6,7 +6,6 @@ init()
 {
 	level.sc_seq = -1;
 	level.sc_expires = 0;
-	level.sc_team_orders = [];
 	level.sc_bot_orders = [];
 	level.sc_chat_at = [];
 
@@ -71,7 +70,6 @@ ingest( lines, seq )
 		return;
 	}
 
-	level.sc_team_orders = [];
 	level.sc_bot_orders = [];
 	level.sc_expires = gettime() + 30000;
 
@@ -91,12 +89,6 @@ ingest( lines, seq )
 			case "ttl":
 				level.sc_expires = gettime() + int( parts[ 1 ] );
 				break;
-			case "seq":
-			case "map":
-				break;
-			case "team":
-				level.sc_team_orders[ parts[ 1 ] ] = parsePairs( parts, 2 );
-				break;
 			case "bot":
 				level.sc_bot_orders[ "b" + parts[ 1 ] ] = parsePairs( parts, 2 );
 				break;
@@ -106,7 +98,7 @@ ingest( lines, seq )
 		}
 	}
 
-	if ( level.sc_team_orders.size == 0 && level.sc_bot_orders.size == 0 )
+	if ( level.sc_bot_orders.size == 0 )
 	{
 		revertAll();
 	}
@@ -204,12 +196,14 @@ botBySlot( slot )
 	return undefined;
 }
 
-/// Re-applies the active orders every second and reverts the bots to stock behavior once they expire.
+/// Ends finished missions every second, and reverts the bots to stock behavior once the orders expire.
 enforceLoop()
 {
 	for ( ;; )
 	{
 		wait 1;
+
+		endMissions();
 
 		if ( level.sc_seq < 0 )
 		{
@@ -228,7 +222,7 @@ enforceLoop()
 	}
 }
 
-/// Applies the merged team and bot orders to every bot and returns how many bots had any order.
+/// Applies the standing skill to every ordered bot, starts any new goal, and returns how many bots had an order.
 enforce()
 {
 	bots = getBotArray();
@@ -236,133 +230,48 @@ enforce()
 
 	for ( i = 0; i < bots.size; i++ )
 	{
-		if ( !ready( bots[ i ] ) )
-		{
-			continue;
-		}
+		order = level.sc_bot_orders[ "b" + ( bots[ i ] getentitynumber() ) ];
 
-		merged = mergedOrders( bots[ i ] );
-
-		if ( merged.size == 0 )
+		if ( !ready( bots[ i ] ) || !isdefined( order ) )
 		{
 			continue;
 		}
 
 		rememberBaseline( bots[ i ] );
-		applyOrders( bots[ i ], merged );
+		applyOrder( bots[ i ], order );
 		applied++;
 	}
 
 	return applied;
 }
 
-/// Whether Bot Warfare has finished setting up this bot's skill and behavior tables.
+/// Whether Bot Warfare has finished setting up this bot's skill table.
 ready( bot )
 {
-	return isdefined( bot.pers ) && isdefined( bot.pers[ "bots" ] ) && isdefined( bot.pers[ "bots" ][ "skill" ] ) && isdefined( bot.pers[ "bots" ][ "behavior" ] );
+	return isdefined( bot.pers ) && isdefined( bot.pers[ "bots" ] ) && isdefined( bot.pers[ "bots" ][ "skill" ] ) && isdefined( bot.bot );
 }
 
-/// A bot's effective orders: its team's orders overlaid with its own.
-mergedOrders( bot )
-{
-	merged = [];
-	team = bot.pers[ "team" ];
-
-	if ( isdefined( team ) && isdefined( level.sc_team_orders[ team ] ) )
-	{
-		merged = overlay( merged, level.sc_team_orders[ team ] );
-	}
-
-	slot = "b" + ( bot getentitynumber() );
-
-	if ( isdefined( level.sc_bot_orders[ slot ] ) )
-	{
-		merged = overlay( merged, level.sc_bot_orders[ slot ] );
-	}
-
-	return merged;
-}
-
-/// Copies every key of the top array onto the base array.
-overlay( base, top )
-{
-	keys = getarraykeys( top );
-
-	for ( i = 0; i < keys.size; i++ )
-	{
-		base[ keys[ i ] ] = top[ keys[ i ] ];
-	}
-
-	return base;
-}
-
-/// Names of the integer behavior knobs shotcaller may set, each a percentage from zero to one hundred.
-behaviorKeys()
-{
-	return strtok( "strafe,nade,sprint,camp,follow,crouch,jump", "," );
-}
-
-/// Saves a bot's stock skill and behavior values the first time any order touches it.
+/// Saves a bot's stock skill the first time any order touches it.
 rememberBaseline( bot )
 {
-	if ( isdefined( bot.sc_baseline ) )
+	if ( !isdefined( bot.sc_skill_baseline ) )
 	{
-		return;
-	}
-
-	bot.sc_baseline = [];
-	bot.sc_baseline[ "skill" ] = bot.pers[ "bots" ][ "skill" ][ "base" ];
-
-	keys = behaviorKeys();
-
-	for ( i = 0; i < keys.size; i++ )
-	{
-		bot.sc_baseline[ keys[ i ] ] = bot.pers[ "bots" ][ "behavior" ][ keys[ i ] ];
+		bot.sc_skill_baseline = bot.pers[ "bots" ][ "skill" ][ "base" ];
 	}
 }
 
-/// Applies one merged order set to a bot, clamping every value into its legal range.
-applyOrders( bot, orders )
+/// Applies one bot's order: its skill every time, its goal only when the goal is new.
+applyOrder( bot, order )
 {
-	keys = getarraykeys( orders );
-
-	for ( i = 0; i < keys.size; i++ )
+	if ( isdefined( order[ "skill" ] ) )
 	{
-		applyOne( bot, keys[ i ], orders[ keys[ i ] ] );
-	}
-}
-
-/// Applies a single key: the skill level, one behavior percentage or the goal anchor.
-applyOne( bot, key, value )
-{
-	if ( key == "skill" )
-	{
-		bot.pers[ "bots" ][ "skill" ][ "base" ] = clampInt( int( value ), 1, 7 );
-	}
-	else if ( key == "goal" )
-	{
-		applyGoal( bot, value );
-	}
-	else if ( isBehaviorKey( key ) )
-	{
-		bot.pers[ "bots" ][ "behavior" ][ key ] = clampInt( int( value ), 0, 100 );
-	}
-}
-
-/// Whether a key names one of the behavior percentages.
-isBehaviorKey( key )
-{
-	keys = behaviorKeys();
-
-	for ( i = 0; i < keys.size; i++ )
-	{
-		if ( keys[ i ] == key )
-		{
-			return true;
-		}
+		bot.pers[ "bots" ][ "skill" ][ "base" ] = clampInt( int( order[ "skill" ] ), 1, 7 );
 	}
 
-	return false;
+	if ( isdefined( order[ "goal" ] ) && ( !isdefined( bot.sc_goal_sig ) || bot.sc_goal_sig != order[ "goal" ] ) )
+	{
+		startMission( bot, order[ "goal" ] );
+	}
 }
 
 /// Clamps an integer into an inclusive range.
@@ -381,41 +290,66 @@ clampInt( value, low, high )
 	return value;
 }
 
-/// Sends a living bot to an anchor (`w<index>:<radius>`), or clears its goal on `clear`.
-applyGoal( bot, value )
+/// Starts a timed mission (`w<index>:<radius>:<seconds>`): the bot walks to the anchor and is released when it arrives or time runs out.
+startMission( bot, goal )
 {
-	if ( value == "clear" )
-	{
-		if ( bot HasScriptGoal() )
-		{
-			bot thread ClearScriptGoal();
-		}
+	bot.sc_goal_sig = goal;
 
+	parts = strtok( goal, ":" );
+
+	if ( parts.size < 3 || !isalive( bot ) )
+	{
 		return;
 	}
 
-	parts = strtok( value, ":" );
 	origin = maps\mp\shotcaller\_anchors::originOf( parts[ 0 ] );
 
-	if ( !isdefined( origin ) || !isalive( bot ) )
+	if ( !isdefined( origin ) )
 	{
 		return;
 	}
 
-	radius = 150;
+	bot.sc_goal_origin = origin;
+	bot.sc_goal_radius = clampInt( int( parts[ 1 ] ), 16, 1000 );
+	bot.sc_goal_until = gettime() + clampInt( int( parts[ 2 ] ), 3, 60 ) * 1000;
 
-	if ( parts.size > 1 )
-	{
-		radius = clampInt( int( parts[ 1 ] ), 16, 1000 );
-	}
+	bot thread SetScriptGoal( origin, bot.sc_goal_radius );
+}
 
-	if ( !bot HasScriptGoal() || distance2d( bot GetScriptGoal(), origin ) > 16 )
+/// Releases every bot whose mission is over: it arrived, ran out of time or died.
+endMissions()
+{
+	bots = getBotArray();
+
+	for ( i = 0; i < bots.size; i++ )
 	{
-		bot thread SetScriptGoal( origin, radius );
+		bot = bots[ i ];
+
+		if ( !isdefined( bot.sc_goal_until ) )
+		{
+			continue;
+		}
+
+		if ( !isalive( bot ) || gettime() > bot.sc_goal_until || distance2d( bot.origin, bot.sc_goal_origin ) <= bot.sc_goal_radius )
+		{
+			releaseMission( bot );
+		}
 	}
 }
 
-/// Restores every bot that shotcaller touched to the skill and behavior it had before.
+/// Clears a bot's script goal and forgets the mission, so Bot Warfare plays the bot as usual again.
+releaseMission( bot )
+{
+	bot.sc_goal_until = undefined;
+	bot.sc_goal_origin = undefined;
+
+	if ( bot HasScriptGoal() )
+	{
+		bot thread ClearScriptGoal();
+	}
+}
+
+/// Restores every bot that shotcaller touched to the skill it had before and ends its mission.
 revertAll()
 {
 	bots = getBotArray();
@@ -426,27 +360,20 @@ revertAll()
 	}
 }
 
-/// Restores one bot's saved baseline and clears its goal.
+/// Restores one bot's stock skill, ends its mission and forgets the last goal.
 revertBot( bot )
 {
-	if ( !isdefined( bot.sc_baseline ) || !ready( bot ) )
+	if ( isdefined( bot.sc_goal_until ) )
 	{
-		return;
+		releaseMission( bot );
 	}
 
-	bot.pers[ "bots" ][ "skill" ][ "base" ] = bot.sc_baseline[ "skill" ];
+	bot.sc_goal_sig = undefined;
 
-	keys = behaviorKeys();
-
-	for ( i = 0; i < keys.size; i++ )
+	if ( isdefined( bot.sc_skill_baseline ) && ready( bot ) )
 	{
-		bot.pers[ "bots" ][ "behavior" ][ keys[ i ] ] = bot.sc_baseline[ keys[ i ] ];
+		bot.pers[ "bots" ][ "skill" ][ "base" ] = bot.sc_skill_baseline;
 	}
 
-	if ( bot HasScriptGoal() )
-	{
-		bot thread ClearScriptGoal();
-	}
-
-	bot.sc_baseline = undefined;
+	bot.sc_skill_baseline = undefined;
 }

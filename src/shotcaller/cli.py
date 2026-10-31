@@ -5,6 +5,7 @@ from __future__ import annotations
 import argparse
 import json
 import logging
+import signal
 import sys
 from dataclasses import replace
 from pathlib import Path
@@ -62,11 +63,17 @@ def _run(config: Config, args: argparse.Namespace) -> int:
         MatchActuator(rcon),
         Journal(config.journal_path),
     )
+    signal.signal(signal.SIGTERM, _stop)
     try:
         service.run()
     except KeyboardInterrupt:
         return 0
     return 0
+
+
+def _stop(signum: int, frame: object) -> None:
+    """Turns SIGTERM into a normal interrupt so the service releases the bots before it exits."""
+    raise KeyboardInterrupt
 
 
 def _eval(config: Config, args: argparse.Namespace) -> int:

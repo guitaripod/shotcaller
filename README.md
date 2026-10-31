@@ -2,7 +2,7 @@
 
 An LLM game master for [Bot Warfare](https://github.com/ineedbots/iw4x_bot_warfare) bots on [IW4x](https://iw4x.io) (Call of Duty: Modern Warfare 2) servers.
 
-The LLM never aims, moves or shoots. Bot Warfare keeps all of that. shotcaller decides **what the bots are trying to do**: how sharp they are, how aggressively they push or camp, where a squad goes, when to ease off, what they say. It is built so that a better model, dropped in behind one alias, does the job better without changing any code.
+The LLM never aims, moves or shoots. Bot Warfare keeps all of that, including how bots roam the map. shotcaller changes only the things a model can actually improve: how sharp each bot is, a short mission to where you keep dying, the server's bot settings, and what the bots say. It is built so that a better model, dropped in behind one alias, does the job better without changing any code.
 
 ```
  IW4x server (Wine)                         shotcaller sidecar (Python, stdlib only)
@@ -21,13 +21,15 @@ The LLM never aims, moves or shoots. Bot Warfare keeps all of that. shotcaller d
 | Tier | Cadence | Decides |
 | --- | --- | --- |
 | `match` | per map, then every ~2 min | bot skill window, bot count, next map |
-| `squad` | every ~15 s | per-team and per-bot skill, camp/sprint/nade/... percentages, goals (send a bot to an anchor) |
+| `squad` | every ~15 s | per-bot skill (opponents harder or easier to keep the match close), and at most two timed missions to where the human keeps dying |
 | `chat` | on events, rate limited | short in-character lines from the bots involved |
-| frame-level | never | aim, movement, firing: Bot Warfare only |
+| everything else | never | aim, movement, firing, camping, sprinting, spawn behavior: Bot Warfare only |
+
+The surface is small on purpose. An earlier version also let the model set camp/sprint/follow percentages and park bots at fixed spots; the result was bots standing around. The model has no information that beats Bot Warfare's tuning there, so those levers are gone. A mission sends a bot to a death site, holds about 15 seconds, then releases it back to stock play.
 
 ## Fair by construction
 
-The director sees what a human commander could know: scores, the roster, the kill feed and map anchors. It is never given a living player's position, and it can only send bots to anchors the game published (camp spots, team homes, and where a human died, after a delay). See [docs/FAIRNESS.md](docs/FAIRNESS.md).
+The director sees what a human commander could know: scores, the roster, the kill feed and map anchors. It is never given a living player's position, and it can only send bots to places a human recently died, after a delay. See [docs/FAIRNESS.md](docs/FAIRNESS.md).
 
 ## Gets better as models get better
 

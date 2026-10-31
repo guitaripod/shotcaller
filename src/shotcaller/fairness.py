@@ -1,16 +1,15 @@
 """The information barrier: what a director may see and where it may send a bot.
 
 A director sees what a human commander on the server could know: scores, the roster,
-the kill feed and map anchors. It is never given a living player's position, and it may
-only send bots to anchors the game itself published, with human death sites delayed.
+the kill feed and where humans recently died. It is never given a living player's position,
+and it may only send bots to death sites the game published, a few seconds after the fact.
 """
 
 from __future__ import annotations
 
-import math
 from dataclasses import dataclass
 
-from .state import TEAMS, Anchor, MatchState
+from .state import Anchor, MatchState
 
 
 @dataclass(frozen=True, slots=True)
@@ -23,20 +22,17 @@ class FairnessPolicy:
 
 
 def legal_anchors(state: MatchState, policy: FairnessPolicy) -> dict[str, Anchor]:
-    """Anchors a director may name in a goal right now."""
-    legal: dict[str, Anchor] = {}
-    for anchor in state.anchors.values():
-        age = state.now_ms - anchor.born_ms
-        if anchor.kind == "death" and not policy.death_delay_ms <= age <= policy.death_max_age_ms:
-            continue
-        legal[anchor.id] = anchor
-    return legal
+    """Death sites a director may name in a goal right now: old enough to be public, recent enough to matter."""
+    return {
+        anchor.id: anchor
+        for anchor in state.anchors.values()
+        if anchor.kind == "death" and policy.death_delay_ms <= state.now_ms - anchor.born_ms <= policy.death_max_age_ms
+    }
 
 
 def fair_view(state: MatchState, policy: FairnessPolicy, standing: dict | None = None) -> dict:
     """The only picture of the match a director is given, as plain JSON-ready data."""
     legal = legal_anchors(state, policy)
-    homes = {a.team: a for a in legal.values() if a.kind == "home"}
     return {
         "standing_orders": standing or {"teams": [], "bots": []},
         "map": state.map,
@@ -47,7 +43,7 @@ def fair_view(state: MatchState, policy: FairnessPolicy, standing: dict | None =
         "humans": [_human(p) for p in state.humans],
         "bots": [_bot(p, state.side_of(p)) for p in sorted(state.bots, key=lambda p: p.slot)],
         "kill_feed": [_kill(k, state.now_ms) for k in list(state.feed)[-policy.feed_entries :]],
-        "anchors": [_anchor(a, homes, state.now_ms) for a in legal.values()],
+        "death_sites": [_death_site(a, state.now_ms) for a in legal.values()],
     }
 
 
@@ -85,8 +81,6 @@ def _bot(player, side: str | None) -> dict:
         "deaths": player.deaths,
         "alive": player.alive,
         "skill": player.skill,
-        "camp": player.camp,
-        "sprint": player.sprint,
     }
 
 
@@ -103,15 +97,5 @@ def _kill(kill, now_ms: int) -> dict:
     }
 
 
-def _anchor(anchor: Anchor, homes: dict[str, Anchor], now_ms: int) -> dict:
-    view = {"id": anchor.id, "kind": anchor.kind, "team": anchor.team}
-    for team in TEAMS:
-        if team in homes:
-            view[f"distance_to_{team}_home"] = _distance(anchor, homes[team])
-    if anchor.kind == "death":
-        view["human_died_here_s_ago"] = (now_ms - anchor.born_ms) // 1000
-    return view
-
-
-def _distance(a: Anchor, b: Anchor) -> int:
-    return int(math.hypot(a.x - b.x, a.y - b.y))
+def _death_site(anchor: Anchor, now_ms: int) -> dict:
+    return {"id": anchor.id, "human_died_here_s_ago": (now_ms - anchor.born_ms) // 1000}

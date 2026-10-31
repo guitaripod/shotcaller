@@ -151,15 +151,10 @@ playerStatFields( player )
 	return fields;
 }
 
-/// A bot's current skill, the camp and sprint percentages it is running with and whether it has a goal.
+/// A bot's current skill and whether shotcaller has it on a mission.
 botFields( bot )
 {
-	fields = field( "skill", bot.pers[ "bots" ][ "skill" ][ "base" ] );
-	fields += field( "camp", bot.pers[ "bots" ][ "behavior" ][ "camp" ] );
-	fields += field( "sprint", bot.pers[ "bots" ][ "behavior" ][ "sprint" ] );
-	fields += field( "goal", boolInt( bot HasScriptGoal() ) );
-
-	return fields;
+	return field( "skill", bot.pers[ "bots" ][ "skill" ][ "base" ] ) + field( "mission", boolInt( isdefined( bot.sc_goal_until ) ) );
 }
 
 /// Reads one persistent counter, treating a missing value as zero.

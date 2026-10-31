@@ -11,7 +11,7 @@ The point of shotcaller is that a better model, behind the same config key, does
 | `human_dominating` | squad | opposing bots get at least one skill level tougher on average |
 | `human_struggling` | squad | opposing bots get at least one level easier |
 | `human_balanced` | squad | opposing bots move by at most one level (no thrashing) |
-| `human_camps_one_spot` | squad | at least one bot is sent to a place the human keeps dying, and re-asking with the first answer shown does not return identical orders |
+| `human_camps_one_spot` | squad | one or two bots (not more) are sent to different places the human keeps dying, and re-asking with the first answer shown does not return identical orders |
 | `match_too_easy` | match | the skill window rises |
 | `match_steady` | match | the answer is accepted |
 | `chat_human_killed` | chat | one or two lines, from a bot involved |
@@ -37,12 +37,12 @@ Measured 2026-10-31 on a local llama-swap with `enable_thinking = false`. Replac
 
 | Model | match | squad | chat | squad p95 |
 | --- | --- | --- | --- | --- |
-| Nemotron 3.5 Bolt 74B-A9B (Q4, local) | 1.00 | 1.00 | 1.00 | 5.3 s |
-| Qwen3 4B Instruct (Q4, local) | 1.00 | 0.88 | 0.75 | 1.9 s |
+| Nemotron 3.5 Bolt 74B-A9B (Q4, local) | 1.00 | 1.00 | 1.00 | 1.2 s |
+| Qwen3 4B Instruct (Q4, local) | 1.00 | 0.88 | 0.75 | 2.8 s |
+| Nemotron 3.5 Bolt E4B (Q4, local) | 1.00 | 0.88 | 0.60 | 7.6 s |
 | static baseline (no model) | 0.75 | 0.88 | 0.75 | 0.0 s |
-| Nemotron 3.5 Bolt E4B (Q4, local) | 0.50 | 0.50 | 0.00 | 35.2 s |
 
-The first request to a model includes llama-swap loading it, which is why the small Bolt's p95 is long here; run the eval twice for steady-state latency. The suite has eight scenarios, so one failure moves a tier by about a tenth. It is a floor to clear, not a ranking; add scenarios as you find failures.
+The first request to a model includes llama-swap loading it, so run the eval twice for steady-state latency. The suite has eight scenarios, so one failure moves a tier by about a tenth. It is a floor to clear, not a ranking; add scenarios as you find failures.
 
 ## Thinking models
 

@@ -9,7 +9,7 @@ shotcaller has two halves that share nothing but two plain text files.
 │                                 │                │                              │            │
 │ shotcaller GSC mod              │  events.log    │                    Director.decide(tier)   │
 │  _telemetry  kills, scores ─────┼──────────────▶ │                              │            │
-│  _anchors    camp/home/death    │                │              pipeline.resolve (validate    │
+│  _anchors    human death sites  │                │              pipeline.resolve (validate    │
 │  _orders     poll + enforce ◀───┼─ orders.txt ── │              + fairness + limits)          │
 │                                 │                │                              │            │
 │                                 │◀── rcon ────── │        OrderFile / MatchActuator           │
@@ -29,17 +29,18 @@ GSC in IW4x can read and write files (`FileRead`, `FileWrite`, `FileExists`) but
 | `maps/mp/shotcaller/_main.gsc` | dvars, start-up order |
 | `_log.gsc` | event log: truncates per map, `emit`, `field`, name sanitising |
 | `_telemetry.gsc` | kill callback hook, joins and leaves, scoreboard snapshots, match end |
-| `_anchors.gsc` | camp waypoints, team home areas and human death sites as `w<index>` anchors |
-| `_orders.gsc` | polls `orders.txt`, applies skill, behavior percentages and goals, reverts on expiry |
+| `_anchors.gsc` | human death sites as `w<index>` anchors, and anchor id to origin |
+| `_orders.gsc` | polls `orders.txt`, applies skill, runs timed missions, reverts on expiry |
 
-It hooks `level.callbackplayerkilled` one frame after Bot Warfare so both stay in the chain. It sets only Bot Warfare's own public per-bot values (`pers["bots"]["skill"]["base"]`, `pers["bots"]["behavior"][...]`) and its `SetScriptGoal` / `ClearScriptGoal`. It never calls `SetScriptEnemy`, aim or movement builtins.
+It hooks `level.callbackplayerkilled` one frame after Bot Warfare so both stay in the chain. It sets only Bot Warfare's own per-bot skill (`pers["bots"]["skill"]["base"]`) and its `SetScriptGoal` / `ClearScriptGoal` for timed missions. It never touches behavior percentages, `SetScriptEnemy`, aim or movement builtins.
 
 Safety on the game side:
 
 - Orders carry a TTL. If the sidecar dies, the mod reverts every bot to its stock values when the TTL lapses.
 - Orders name the map they were written for; orders for another map are ignored.
 - An order set with nothing in it reverts the bots immediately.
-- Values are clamped again in GSC (skill 1-7, behaviors 0-100, goal radius 16-1000).
+- Values are clamped again in GSC (skill 1-7, goal radius 16-1000, mission length 3-60 s).
+- A goal is a mission: applied once when it first appears, released on arrival, timeout or death, and not re-applied while the same goal string is still in the file.
 
 ## Sidecar (`src/shotcaller/`)
 
@@ -64,7 +65,7 @@ The service runs director calls on a small thread pool so a slow `squad` call ne
 | Tier | Trigger | Output | If the model fails |
 | --- | --- | --- | --- |
 | `match` | new map, then every `match_s` | skill window, bot count, next map via rcon | nothing changes |
-| `squad` | every `squad_s` with a human playing | team/bot orders in the order file | after one TTL without a valid answer the static baseline takes over |
+| `squad` | every `squad_s` with a human playing | bot skill and missions in the order file | after one TTL without a valid answer the static baseline takes over |
 | `chat` | human kills and kills of a bot by the human, rate limited | lines written once into the next order file | nothing is said |
 
 A tier whose model has no passing eval report does not run on the model at all (squad falls back to the static baseline; match and chat stay silent) unless `trust_unvalidated` is set.

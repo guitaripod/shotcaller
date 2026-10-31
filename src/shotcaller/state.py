@@ -23,17 +23,14 @@ class Player:
     score: int = 0
     alive: bool = True
     skill: int | None = None
-    camp: int | None = None
-    sprint: int | None = None
 
 
 @dataclass(frozen=True, slots=True)
 class Anchor:
-    """A waypoint the game offered as a goal: a camp spot, a team home or where a human died."""
+    """A waypoint the game offered as a goal: where a human died."""
 
     id: str
     kind: str
-    team: str
     x: int
     y: int
     z: int
@@ -153,8 +150,6 @@ class MatchState:
         player.score = event.get_int("s")
         player.alive = event.get_str("alive") == "1"
         player.skill = event.get_int("skill", -1) if "skill" in event.fields else None
-        player.camp = event.get_int("camp", -1) if "camp" in event.fields else None
-        player.sprint = event.get_int("sprint", -1) if "sprint" in event.fields else None
         self.players[slot] = player
 
     def _on_kill(self, event: Event) -> None:
@@ -180,7 +175,6 @@ class MatchState:
             self.anchors[anchor_id] = Anchor(
                 id=anchor_id,
                 kind=event.get_str("kind"),
-                team=event.get_str("team", "none"),
                 x=event.get_int("x"),
                 y=event.get_int("y"),
                 z=event.get_int("z"),

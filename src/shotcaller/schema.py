@@ -2,32 +2,16 @@
 
 from __future__ import annotations
 
-from .orders import BEHAVIORS, RADIUS_RANGE, SKILL_RANGE
+from .orders import RADIUS_RANGE, SKILL_RANGE
 
-VERSION = 1
+VERSION = 2
 
-_PERCENT = {"type": "integer", "minimum": 0, "maximum": 100}
-_BEHAVIORS = {
-    "type": "object",
-    "properties": {name: _PERCENT for name in BEHAVIORS},
-    "additionalProperties": False,
-}
 _SKILL = {"type": "integer", "minimum": SKILL_RANGE[0], "maximum": SKILL_RANGE[1]}
 
 SQUAD = {
     "type": "object",
     "properties": {
         "rationale": {"type": "string", "maxLength": 240},
-        "teams": {
-            "type": "array",
-            "maxItems": 2,
-            "items": {
-                "type": "object",
-                "properties": {"team": {"enum": ["allies", "axis"]}, "behaviors": _BEHAVIORS},
-                "required": ["team", "behaviors"],
-                "additionalProperties": False,
-            },
-        },
         "bots": {
             "type": "array",
             "maxItems": 18,
@@ -36,7 +20,6 @@ SQUAD = {
                 "properties": {
                     "slot": {"type": "integer", "minimum": 0, "maximum": 17},
                     "skill": _SKILL,
-                    "behaviors": _BEHAVIORS,
                     "goal": {
                         "type": ["object", "null"],
                         "properties": {
@@ -52,7 +35,7 @@ SQUAD = {
             },
         },
     },
-    "required": ["rationale", "teams", "bots"],
+    "required": ["rationale", "bots"],
     "additionalProperties": False,
 }
 

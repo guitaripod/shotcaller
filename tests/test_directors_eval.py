@@ -3,7 +3,7 @@ from __future__ import annotations
 import json
 import urllib.error
 
-from shotcaller import gating
+from shotcaller import gating, schema
 from shotcaller.config import Gating
 from shotcaller.director import LlmConfig, LlmDirector, StaticDirector, Tier
 from shotcaller.eval import run_eval
@@ -72,7 +72,7 @@ def test_eval_scores_an_oracle_model_at_the_top():
     def transport(url, headers, body, timeout_s):
         system = body["messages"][0]["content"]
         view = json.loads(body["messages"][1]["content"])["view"]
-        if "adjust the standing orders" in system:
+        if "adjust the bots now" in system:
             return reply(json.dumps(squad_answer(view)))
         if "server-wide knobs" in system:
             return reply('{"rationale": "easy", "skill_min": 4, "skill_max": 7}')
@@ -87,25 +87,22 @@ def squad_answer(view: dict) -> dict:
     humans = view["humans"]
     kd = sum(h["kills"] for h in humans) / max(1, sum(h["deaths"] for h in humans))
     shift = 2 if kd >= 3 else 1 if kd >= 1.8 else -1 if kd <= 0.7 else 0
-    axis = [b for b in view["bots"] if b["team"] == "axis"]
-    bots = [{"slot": b["slot"], "skill": b["skill"] + shift} for b in axis] if shift else []
-    deaths = [a["id"] for a in view["anchors"] if a["kind"] == "death"]
-    if deaths:
+    axis = [b for b in view["bots"] if b["side"] == "opponent"]
+    bots = {b["slot"]: {"slot": b["slot"], "skill": b["skill"] + shift} for b in axis} if shift else {}
+    sites = [site["id"] for site in view["death_sites"]]
+    if len(sites) >= 2:
         repeated = bool(view["standing_orders"]["bots"])
-        goal = {"anchor": deaths[-1], "radius": 400} if repeated else {"anchor": deaths[0]}
-        first = next((b for b in bots if b["slot"] == 1), None)
-        if first:
-            first["goal"] = goal
-        else:
-            bots.append({"slot": 1, "goal": goal})
-    return {"rationale": "oracle", "teams": [], "bots": bots}
+        picks = [sites[-1], sites[1]] if repeated else [sites[0], sites[1]]
+        for slot, site in zip((1, 2), picks):
+            bots.setdefault(slot, {"slot": slot})["goal"] = {"anchor": site}
+    return {"rationale": "oracle", "bots": list(bots.values())}
 
 
 def test_gating_enables_tiers_from_the_stored_report(tmp_path):
     config = Gating(reports_dir=tmp_path, thresholds={"match": 0.6, "squad": 0.7, "chat": 0.6})
     assert not any(gating.enabled_tiers(config, "model-a").values())
     assert all(gating.enabled_tiers(Gating(reports_dir=tmp_path, trust_unvalidated=True), "model-a").values())
-    report = {"schema": 1, "model": "model-a", "tiers": {"match": {"score": 0.9}, "squad": {"score": 0.5}, "chat": {"score": 0.7}}}
+    report = {"schema": schema.VERSION, "model": "model-a", "tiers": {"match": {"score": 0.9}, "squad": {"score": 0.5}, "chat": {"score": 0.7}}}
     gating.save_report(tmp_path, report)
     assert gating.enabled_tiers(config, "model-a") == {Tier.MATCH: True, Tier.SQUAD: False, Tier.CHAT: True}
 

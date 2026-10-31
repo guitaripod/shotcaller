@@ -73,7 +73,7 @@ def _repeat_similarity(director: Director, scenario: Scenario, state, first: Squ
 
 
 def _signature(squad: Squad) -> set[tuple]:
-    return {(b.slot, b.skill, b.goal.anchor if b.goal else None, tuple(sorted(b.behaviors.items()))) for b in squad.bots}
+    return {(b.slot, b.skill, b.goal.anchor if b.goal else None) for b in squad.bots}
 
 
 def score_tier(results: list[ScenarioResult], budget_s: float) -> TierScore:

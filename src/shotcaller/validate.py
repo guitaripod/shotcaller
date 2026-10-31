@@ -6,8 +6,8 @@ import json
 import re
 from dataclasses import dataclass, field
 
-from .orders import BEHAVIORS, DEFAULT_RADIUS, RADIUS_RANGE, SKILL_RANGE, BotOrder, ChatLine, Goal, MatchOrder, Squad, TeamOrder
-from .state import TEAMS, Anchor, MatchState
+from .orders import DEFAULT_RADIUS, RADIUS_RANGE, SKILL_RANGE, BotOrder, ChatLine, Goal, MatchOrder, Squad
+from .state import Anchor, MatchState
 
 _THINK = re.compile(r"<think>.*?</think>", re.DOTALL)
 _FENCE = re.compile(r"```(?:json)?\s*(.*?)```", re.DOTALL)
@@ -20,6 +20,8 @@ class Limits:
     """Hard bounds the operator sets, enforced no matter what a model says."""
 
     max_skill_step: int = 2
+    max_goal_bots: int = 2
+    goal_seconds: int = 15
     max_bots: int = 17
     chat_max_len: int = 80
     chat_max_lines: int = 2
@@ -51,28 +53,24 @@ def extract_json(text: str) -> dict | None:
 
 
 def validate_squad(proposal: dict, state: MatchState, legal: dict[str, Anchor], limits: Limits) -> Validated:
-    """Checks team and bot orders against the roster, the legal anchors and the skill step limit."""
+    """Checks bot orders against the roster, the legal anchors, the skill step limit and the mission cap."""
     issues: list[str] = []
     squad = Squad()
-    seen_teams: set[str] = set()
-    for raw in _list(proposal.get("teams")):
-        team = raw.get("team") if isinstance(raw, dict) else None
-        if not isinstance(team, str) or team not in TEAMS or team in seen_teams:
-            issues.append(f"team order dropped: {team!r}")
-            continue
-        seen_teams.add(team)
-        squad.teams.append(TeamOrder(team, _behaviors(raw.get("behaviors"), issues)))
     bots = {p.slot: p for p in state.bots}
     seen_slots: set[int] = set()
+    missions = 0
     for raw in _list(proposal.get("bots")):
         slot = raw.get("slot") if isinstance(raw, dict) else None
         if not isinstance(slot, int) or slot not in bots or slot in seen_slots:
             issues.append(f"bot order dropped: slot {slot!r}")
             continue
         seen_slots.add(slot)
-        order = BotOrder(slot, behaviors=_behaviors(raw.get("behaviors"), issues))
-        order.skill = _skill(raw.get("skill"), bots[slot].skill, limits, issues)
-        _goal(raw.get("goal"), order, legal, issues)
+        order = BotOrder(slot, _skill(raw.get("skill"), bots[slot].skill, limits, issues))
+        if missions < limits.max_goal_bots:
+            _goal(raw.get("goal"), order, legal, limits, issues)
+            missions += order.goal is not None
+        elif raw.get("goal") is not None:
+            issues.append("goal dropped: mission cap reached")
         if not order.is_empty():
             squad.bots.append(order)
     return Validated(squad, issues)
@@ -132,19 +130,6 @@ def _clamp(value: int, low: int, high: int) -> int:
     return max(low, min(high, value))
 
 
-def _behaviors(raw: object, issues: list[str]) -> dict[str, int]:
-    result: dict[str, int] = {}
-    if not isinstance(raw, dict):
-        return result
-    for key, value in raw.items():
-        number = _int(value)
-        if key not in BEHAVIORS or number is None:
-            issues.append(f"behavior dropped: {key!r}")
-            continue
-        result[key] = _clamp(number, 0, 100)
-    return result
-
-
 def _skill(raw: object, current: int | None, limits: Limits, issues: list[str]) -> int | None:
     number = _int(raw)
     if number is None:
@@ -156,11 +141,11 @@ def _skill(raw: object, current: int | None, limits: Limits, issues: list[str]) 
     return number
 
 
-def _goal(raw: object, order: BotOrder, legal: dict[str, Anchor], issues: list[str]) -> None:
+def _goal(raw: object, order: BotOrder, legal: dict[str, Anchor], limits: Limits, issues: list[str]) -> None:
     if raw is None:
         return
     if not isinstance(raw, dict) or raw.get("anchor") not in legal:
         issues.append(f"goal dropped: anchor {raw.get('anchor') if isinstance(raw, dict) else raw!r} is not legal")
         return
     radius = _int(raw.get("radius"))
-    order.goal = Goal(raw["anchor"], _clamp(radius, *RADIUS_RANGE) if radius is not None else DEFAULT_RADIUS)
+    order.goal = Goal(raw["anchor"], _clamp(radius, *RADIUS_RANGE) if radius is not None else DEFAULT_RADIUS, limits.goal_seconds)

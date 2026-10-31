@@ -29,7 +29,7 @@ class ScriptedDirector:
         return Proposal(data=data, raw=json.dumps(data), model=self.name, latency_ms=12, error=None if data is not None else "boom")
 
 
-SQUAD_ANSWER = {"rationale": "go", "teams": [{"team": "axis", "behaviors": {"camp": 60}}], "bots": [{"slot": 1, "skill": 4, "goal": {"anchor": "w41", "radius": 200}}]}
+SQUAD_ANSWER = {"rationale": "go", "bots": [{"slot": 1, "skill": 4, "goal": {"anchor": "w41", "radius": 200}}]}
 CHAT_ANSWER = {"lines": [{"slot": 1, "scope": "all", "text": "Gotcha."}]}
 MATCH_ANSWER = {"rationale": "ease", "skill_min": 2}
 
@@ -65,7 +65,7 @@ def test_squad_orders_reach_the_order_file(tmp_path):
     service.step(0.0)
     service.step(0.5)
     text = orders.read_text()
-    assert "map|mp_rust" in text and "team|axis|camp=60" in text and "bot|1|skill=4|goal=w41:200" in text
+    assert "map|mp_rust" in text and "bot|1|skill=4|goal=w41:200:15" in text
     assert rcon.sent == ["set bots_skill_min 2"]
 
 
@@ -119,7 +119,7 @@ def test_a_new_map_clears_the_orders_and_names_the_new_map(tmp_path):
     append(events, "0|hello|v=0.1.0|map=mp_terminal|gametype=war|slots=12")
     service.step(1.0)
     text = orders.read_text()
-    assert "map|mp_terminal" in text and "bot|" not in text and "team|" not in text
+    assert "map|mp_terminal" in text and "bot|" not in text
 
 
 def test_a_failing_model_falls_back_to_the_static_director_and_the_journal_records_it(tmp_path):
@@ -149,7 +149,7 @@ def test_a_model_that_recovers_replaces_the_baseline(tmp_path):
     director.answers[Tier.SQUAD] = SQUAD_ANSWER
     service.step(16.0)
     service.step(16.5)
-    assert "bot|1|skill=4|goal=w41:200" in orders.read_text()
+    assert "bot|1|skill=4|goal=w41:200:15" in orders.read_text()
 
 
 def test_spectating_humans_do_not_wake_the_director(tmp_path):

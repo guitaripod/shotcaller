@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from shotcaller.actuator import MatchActuator, OrderFile
-from shotcaller.orders import BotOrder, ChatLine, Goal, MatchOrder, Squad, TeamOrder, encode, squad_to_dict
+from shotcaller.orders import BotOrder, ChatLine, Goal, MatchOrder, Squad, encode, squad_to_dict
 
 
 class FakeRcon:
@@ -14,26 +14,22 @@ class FakeRcon:
 
 
 def sample_squad() -> Squad:
-    return Squad(
-        teams=[TeamOrder("axis", {"camp": 60, "sprint": 30})],
-        bots=[BotOrder(7, skill=5, behaviors={"camp": 80}, goal=Goal("w123", 150)), BotOrder(9, clear_goal=True), BotOrder(3)],
-    )
+    return Squad(bots=[BotOrder(7, skill=5, goal=Goal("w123", 150, 15)), BotOrder(9, skill=2), BotOrder(3)])
 
 
 def test_encode_matches_the_wire_format_the_gsc_parses():
     text = encode(12, "mp_rust", 45000, sample_squad(), [ChatLine(7, "all", "Nice try.")])
     assert text == (
         "seq|12\nmap|mp_rust\nttl|45000\n"
-        "team|axis|camp=60|sprint=30\n"
-        "bot|7|skill=5|camp=80|goal=w123:150\n"
-        "bot|9|goal=clear\n"
+        "bot|7|skill=5|goal=w123:150:15\n"
+        "bot|9|skill=2\n"
         "chat|7|all|Nice try.\n"
     )
 
 
 def test_squad_to_dict_omits_empty_orders():
     summary = squad_to_dict(sample_squad())
-    assert [b["slot"] for b in summary["bots"]] == [7, 9] or [b["slot"] for b in summary["bots"]] == [7]
+    assert [b["slot"] for b in summary["bots"]] == [7, 9]
     assert summary["bots"][0]["goal"] == {"anchor": "w123", "radius": 150}
 
 

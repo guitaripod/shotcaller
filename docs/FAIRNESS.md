@@ -10,21 +10,15 @@ shotcaller exists to make a server more fun to play against bots, not to make bo
 
 ## What a director sees
 
-Scores, the roster with kills, deaths and (for bots) current skill and behavior values, the last dozen kills with weapons, the standing orders it gave last time, and the legal anchors with their distance to each team's home. That is what a human commander watching the scoreboard and the kill feed could know.
+Scores, a summary of how the human is doing, the roster with kills, deaths and (for bots) current skill and side, the last dozen kills with weapons, the standing orders it gave last time, and the death sites it may send bots to. That is what a human commander watching the scoreboard and the kill feed could know.
 
-## Legal anchors
+## Legal goals
 
-| Kind | Source | Legal when |
-| --- | --- | --- |
-| `camp` | Bot Warfare's curated camp waypoints | always |
-| `home` | the waypoint nearest each team's average spawn | always |
-| `death` | the waypoint nearest where a human died | at least `death_delay_ms` (6 s) and at most `death_max_age_ms` (5 min) after |
-
-Bots then walk to those places the normal way, with Bot Warfare's own pathing and perception. A death site tells the bots where a kill cam would have shown the human.
+Only death sites: the waypoint nearest where a human died, legal from `death_delay_ms` (6 s) to `death_max_age_ms` (5 min) after. Camp spots and spawn areas are not offered, because sending a bot to a fixed spot just parks it. A bot sent to a death site walks there the normal way, with Bot Warfare's own pathing and perception, holds about 15 seconds and is released. At most two bots are on a mission at once. A death site tells the bots where a kill cam would have shown the human.
 
 ## Operator limits
 
-Whatever a model asks for is clamped by `[limits]`: skill moves at most `max_skill_step` (2) per decision, bot count is capped, chat is short and bots-only, the next map must be on your rotation list. Orders expire if the sidecar stops.
+Whatever a model asks for is clamped by `[limits]`: skill moves at most `max_skill_step` (2) per decision, `max_goal_bots` (2) bots on a mission for `goal_seconds` (15), bot count is capped, chat is short and bots-only, the next map must be on your rotation list. Orders expire if the sidecar stops.
 
 ## Chat
 

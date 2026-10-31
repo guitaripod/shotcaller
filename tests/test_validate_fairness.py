@@ -20,7 +20,6 @@ def test_extract_json_handles_fences_and_think_tags():
 def test_squad_drops_unknown_slots_and_illegal_anchors(match_state):
     legal = legal_anchors(match_state, POLICY)
     proposal = {
-        "teams": [{"team": "axis", "behaviors": {"camp": 250, "bogus": 1}}, {"team": "nobody", "behaviors": {}}],
         "bots": [
             {"slot": 1, "goal": {"anchor": "w41", "radius": 5000}},
             {"slot": 2, "goal": {"anchor": "w9999"}},
@@ -29,9 +28,17 @@ def test_squad_drops_unknown_slots_and_illegal_anchors(match_state):
         ],
     }
     result = validate_squad(proposal, match_state, legal, LIMITS).value
-    assert [t.behaviors for t in result.teams] == [{"camp": 100}]
     assert [b.slot for b in result.bots] == [1]
-    assert (result.bots[0].goal.anchor, result.bots[0].goal.radius) == ("w41", 1000)
+    assert (result.bots[0].goal.anchor, result.bots[0].goal.radius, result.bots[0].goal.seconds) == ("w41", 1000, 15)
+
+
+def test_squad_caps_how_many_bots_may_be_on_a_mission(match_state):
+    match_state.apply(parse_line("9000|join|pn=3|p=bot3|pt=axis|pb=1"))
+    legal = legal_anchors(match_state, POLICY)
+    goal = {"goal": {"anchor": "w41"}}
+    result = validate_squad({"bots": [{"slot": 1, **goal}, {"slot": 2, **goal}, {"slot": 3, **goal}]}, match_state, legal, LIMITS)
+    assert [b.slot for b in result.value.bots] == [1, 2]
+    assert any("mission cap" in issue for issue in result.issues)
 
 
 def test_squad_limits_skill_step(match_state):
@@ -42,8 +49,14 @@ def test_squad_limits_skill_step(match_state):
     assert result.issues
 
 
+def test_only_death_sites_are_goals_and_camp_or_home_anchors_are_not(match_state):
+    match_state.apply(parse_line("200|anchor|id=w5|kind=camp|x=1|y=1|z=0"))
+    match_state.apply(parse_line("200|anchor|id=w6|kind=home|x=1|y=1|z=0"))
+    assert set(legal_anchors(match_state, POLICY)) == {"w41"}
+
+
 def test_death_anchor_is_illegal_until_the_delay_passes(match_state):
-    match_state.apply(parse_line("8000|anchor|id=w77|kind=death|team=none|x=5|y=5|z=0"))
+    match_state.apply(parse_line("8000|anchor|id=w77|kind=death|x=5|y=5|z=0"))
     match_state.now_ms = 8000 + POLICY.death_delay_ms - 1
     assert "w77" not in legal_anchors(match_state, POLICY)
     match_state.now_ms = 8000 + POLICY.death_delay_ms
@@ -57,8 +70,7 @@ def test_fair_view_never_contains_a_live_position(match_state):
     text = json.dumps(view)
     for forbidden in ('"x"', '"y"', '"z"', "origin", "position"):
         assert forbidden not in text
-    assert {a["id"] for a in view["anchors"]} == {"w10", "w90", "w41"}
-    assert view["anchors"][2]["distance_to_allies_home"] == 1746
+    assert [site["id"] for site in view["death_sites"]] == ["w41"]
 
 
 def test_match_order_clamps_and_checks_the_map(match_state):

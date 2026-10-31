@@ -52,8 +52,8 @@ def test_state_tracks_roster_scores_and_anchors():
     assert sorted(p.slot for p in state.bots) == [1, 2]
     assert state.scores == {"allies": 300, "axis": 200}
     assert state.human_kd() == 4.5
-    assert state.anchors["w41"].kind == "camp"
-    assert state.players[1].skill == 3 and state.players[1].sprint == 60
+    assert state.anchors["w41"].kind == "death"
+    assert state.players[1].skill == 3
 
 
 def test_state_resets_on_new_map():

@@ -31,7 +31,7 @@ class StaticDirector:
             for bot in opposing:
                 if bot["skill"] is not None:
                     bots.append({"slot": bot["slot"], "skill": max(1, min(7, bot["skill"] + shift))})
-        return {"rationale": f"human K/D adjust {shift:+d}", "teams": [], "bots": bots}
+        return {"rationale": f"human K/D adjust {shift:+d}", "bots": bots}
 
     def _skill_shift(self, view: dict) -> int:
         deaths = sum(h["deaths"] for h in view["humans"])

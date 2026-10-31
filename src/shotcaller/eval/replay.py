@@ -47,9 +47,7 @@ def _hydrate(state: MatchState, view: dict) -> None:
     state.map, state.gametype = view["map"], view["gametype"]
     state.now_ms = view["elapsed_s"] * 1000
     state.players = {
-        b["slot"]: Player(b["slot"], f"bot{b['slot']}", b["team"], True, b["kills"], b["deaths"], 0, b["alive"], b["skill"], b["camp"], b["sprint"])
+        b["slot"]: Player(b["slot"], f"bot{b['slot']}", b["team"], True, b["kills"], b["deaths"], 0, b["alive"], b["skill"])
         for b in view["bots"]
     }
-    state.anchors = {
-        a["id"]: Anchor(a["id"], a["kind"], a["team"], 0, 0, 0, state.now_ms - a.get("human_died_here_s_ago", 600) * 1000) for a in view["anchors"]
-    }
+    state.anchors = {a["id"]: Anchor(a["id"], "death", 0, 0, 0, state.now_ms - a["human_died_here_s_ago"] * 1000) for a in view["death_sites"]}

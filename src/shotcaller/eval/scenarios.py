@@ -31,13 +31,11 @@ def build_state(human_kills: int, human_deaths: int, axis_skill: int = 3, allies
     state.scores.update(allies=human_kills * 100, axis=human_deaths * 100)
     state.players[0] = Player(0, "marcus", "allies", False, human_kills, human_deaths, human_kills * 100)
     for slot in range(1, 5):
-        state.players[slot] = Player(slot, f"axis{slot}", "axis", True, 2, 3, 200, True, axis_skill, 5, 70)
+        state.players[slot] = Player(slot, f"axis{slot}", "axis", True, 2, 3, 200, True, axis_skill)
     for slot in range(5, 8):
-        state.players[slot] = Player(slot, f"ally{slot}", "allies", True, 3, 2, 300, True, allies_skill, 5, 70)
-    for anchor_id, kind, team, x, y in (("w10", "home", "allies", -1500, 0), ("w90", "home", "axis", 1700, 100), ("w41", "camp", "none", 200, 400), ("w42", "camp", "none", 900, -300)):
-        state.anchors[anchor_id] = Anchor(anchor_id, kind, team, x, y, 0, 1000)
+        state.players[slot] = Player(slot, f"ally{slot}", "allies", True, 3, 2, 300, True, allies_skill)
     for index, anchor_id in enumerate(deaths_at or []):
-        state.anchors[anchor_id] = Anchor(anchor_id, "death", "none", 700 + index * 40, 250, 0, 250_000 + index * 5000)
+        state.anchors[anchor_id] = Anchor(anchor_id, "death", 700 + index * 40, 250, 0, 250_000 + index * 5000)
     state.feed.append(Kill(290_000, 0, "marcus", False, "allies", 2, "axis2", True, "m4a1_mp", "MOD_RIFLE_BULLET"))
     return state
 
@@ -70,8 +68,9 @@ def _stays_calm(value: Any, state: MatchState) -> tuple[bool, str]:
 
 def _contests_deaths(value: Any, state: MatchState) -> tuple[bool, str]:
     cluster = {a.id for a in state.anchors.values() if a.kind == "death"}
-    goals = {order.goal.anchor for order in value.bots if order.goal}
-    return bool(goals & cluster), f"goals {sorted(goals)} vs death sites {sorted(cluster)}"
+    goals = [order.goal.anchor for order in value.bots if order.goal]
+    ok = bool(set(goals) & cluster) and len(set(goals)) > 1 and len(goals) <= 2
+    return ok, f"goals {goals} vs death sites {sorted(cluster)}"
 
 
 def _raises_window(value: Any, _state: MatchState) -> tuple[bool, str]:
