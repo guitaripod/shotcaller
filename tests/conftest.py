@@ -38,11 +38,11 @@ def lines_to_state(lines: list[str]) -> MatchState:
 MATCH_LINES = [
     "0|hello|v=0.1.0|map=mp_rust|gametype=war|slots=12",
     "100|anchor|id=w41|kind=death|x=200|y=400|z=0",
-    "1000|join|pn=0|p=marcus|pt=allies|pb=0",
+    "1000|join|pn=0|p=player|pt=allies|pb=0",
     "1000|join|pn=1|p=bot1|pt=axis|pb=1",
     "1000|join|pn=2|p=bot2|pt=axis|pb=1",
     "5000|snap|allies=300|axis=200|humans=1|bots=2",
-    "5000|p|pn=0|p=marcus|pt=allies|pb=0|k=9|d=2|s=900|alive=1",
+    "5000|p|pn=0|p=player|pt=allies|pb=0|k=9|d=2|s=900|alive=1",
     "5000|p|pn=1|p=bot1|pt=axis|pb=1|k=1|d=4|s=100|alive=1|skill=3|mission=0",
     "5000|p|pn=2|p=bot2|pt=axis|pb=1|k=1|d=5|s=100|alive=1|skill=3|mission=0",
     "10000|snap|allies=300|axis=200|humans=1|bots=2",

@@ -28,14 +28,14 @@ def build_state(human_kills: int, human_deaths: int, axis_skill: int = 3, allies
     """A TDM state: one human on allies, four axis bots, three allied bots, optional human death anchors."""
     state = MatchState(map="mp_rust", gametype="war", slots=12, now_ms=300_000)
     state.scores.update(allies=human_kills * 100, axis=human_deaths * 100)
-    state.players[0] = Player(0, "marcus", "allies", False, human_kills, human_deaths, human_kills * 100)
+    state.players[0] = Player(0, "player", "allies", False, human_kills, human_deaths, human_kills * 100)
     for slot in range(1, 5):
         state.players[slot] = Player(slot, f"axis{slot}", "axis", True, 2, 3, 200, True, axis_skill)
     for slot in range(5, 8):
         state.players[slot] = Player(slot, f"ally{slot}", "allies", True, 3, 2, 300, True, allies_skill)
     for index, anchor_id in enumerate(deaths_at or []):
         state.anchors[anchor_id] = Anchor(anchor_id, "death", 700 + index * 40, 250, 0, 250_000 + index * 5000)
-    state.feed.append(Kill(290_000, 0, "marcus", False, "allies", 2, "axis2", True, "m4a1_mp", "MOD_RIFLE_BULLET"))
+    state.feed.append(Kill(290_000, 0, "player", False, "allies", 2, "axis2", True, "m4a1_mp", "MOD_RIFLE_BULLET"))
     return state
 
 

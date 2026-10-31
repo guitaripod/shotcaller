@@ -48,7 +48,7 @@ def test_tail_detects_truncation(tmp_path):
 def test_state_tracks_roster_scores_and_anchors():
     state = lines_to_state(MATCH_LINES)
     assert state.map == "mp_rust" and state.slots == 12
-    assert [p.name for p in state.humans] == ["marcus"]
+    assert [p.name for p in state.humans] == ["player"]
     assert sorted(p.slot for p in state.bots) == [1, 2]
     assert state.scores == {"allies": 300, "axis": 200}
     assert state.human_kd() == 4.5
@@ -65,7 +65,7 @@ def test_state_resets_on_new_map():
 
 def test_state_records_kill_feed():
     state = lines_to_state(MATCH_LINES)
-    state.apply(parse_line("6000|kill|vn=0|v=marcus|vt=allies|vb=0|w=m4a1_mp|mod=MOD_RIFLE_BULLET|x=1|y=2|z=3|an=1|a=bot1|at=axis|ab=1"))
+    state.apply(parse_line("6000|kill|vn=0|v=player|vt=allies|vb=0|w=m4a1_mp|mod=MOD_RIFLE_BULLET|x=1|y=2|z=3|an=1|a=bot1|at=axis|ab=1"))
     kill = state.feed[-1]
-    assert (kill.victim_name, kill.attacker_name, kill.attacker_bot) == ("marcus", "bot1", True)
+    assert (kill.victim_name, kill.attacker_name, kill.attacker_bot) == ("player", "bot1", True)
     assert state.recent_human_deaths(5000)
