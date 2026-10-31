@@ -1,0 +1,54 @@
+# Wire protocol
+
+Both files live in `<game>/userraw/scriptdata/shotcaller/`. GSC paths are relative to `scriptdata`, so the mod uses `shotcaller/events.log` and `shotcaller/orders.txt`.
+
+Values never contain `|`, `=` or newlines: the mod replaces them with spaces in names and weapon strings, and the sidecar strips them from chat.
+
+## `events.log` (game to sidecar)
+
+One event per line: `<game ms>|<type>|key=value|key=value...`. The mod truncates the file at every map start; the first line is always `hello`. The sidecar tails by byte offset, reads only complete lines and treats a shrinking file as a new map.
+
+| Type | Fields |
+| --- | --- |
+| `hello` | `v` mod version, `map`, `gametype`, `slots` |
+| `join` / `leave` | `pn` slot, `p` name, `pt` team, `pb` bot flag |
+| `snap` | `allies`, `axis` scores, `humans`, `bots` |
+| `p` | one line per player after each `snap`: `pn p pt pb`, `k` kills, `d` deaths, `s` score, `alive`; bots add `skill`, `camp`, `sprint`, `goal` (whether the bot has any script goal, Bot Warfare sets its own too) |
+| `kill` | victim `vn v vt vb`, `w` weapon, `mod`, `x y z` death position, attacker `an a at ab` when the attacker is a player |
+| `anchor` | `id` (`w<waypoint index>`), `kind` (`camp`, `home`, `death`), `team`, `x y z` |
+| `ack` | `seq` of the order file just applied, `bots` with orders, `chats` spoken |
+| `expired` | the standing orders lapsed and the bots were reverted |
+| `end` | final `allies` / `axis` scores |
+
+Snapshots run every `sc_snapshot_ms` (default 5000). A human death also emits a `death` anchor at the nearest waypoint.
+
+## `orders.txt` (sidecar to game)
+
+Pipe separated lines, replaced atomically (`os.replace`) so the mod never reads half a file:
+
+```
+seq|12
+map|mp_rust
+ttl|45000
+team|axis|camp=60|sprint=30
+bot|7|skill=5|camp=80|goal=w123:150
+bot|9|goal=clear
+chat|7|all|Nice try.
+```
+
+| Line | Meaning |
+| --- | --- |
+| `seq` | increases on every write; the mod applies a file once per new `seq` |
+| `map` | map the orders were written for; the mod ignores the file on any other map |
+| `ttl` | milliseconds from when the mod ingests the file until it reverts the bots |
+| `team|<team>|k=v...` | behavior percentages for every bot on a team |
+| `bot|<slot>|k=v...` | per-bot values, overriding team values |
+| `chat|<slot>|<all or team>|<text>` | spoken once, at most once per 10 s per bot |
+
+Keys: `skill` 1-7; `strafe nade sprint camp follow crouch jump` 0-100; `goal` is `w<index>:<radius>` or `clear`.
+
+The mod re-applies the merged orders every second (so a goal survives a respawn) and writes an `ack`. The sidecar rewrites the same orders with a new `seq` every half squad interval, which refreshes the TTL. An order set with no team and no bot lines reverts the bots at once.
+
+## Server-wide orders (rcon)
+
+The `match` tier sets Bot Warfare dvars over rcon: `bots_skill_min`, `bots_skill_max`, `bots_manage_fill` and, for the next map, `sv_mapRotationCurrent`. The server must run with `bots_skill 0` so Bot Warfare does not overwrite per-bot skill.

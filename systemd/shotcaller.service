@@ -1,0 +1,13 @@
+[Unit]
+Description=shotcaller: LLM game master for Bot Warfare bots
+After=network-online.target
+
+[Service]
+Type=simple
+ExecStart=%h/.local/bin/shotcaller run
+Restart=on-failure
+RestartSec=10
+Nice=5
+
+[Install]
+WantedBy=default.target

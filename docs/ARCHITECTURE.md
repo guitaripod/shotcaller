@@ -1,0 +1,77 @@
+# Architecture
+
+shotcaller has two halves that share nothing but two plain text files.
+
+```
+ IW4x server process                                 shotcaller sidecar
+┌─────────────────────────────────┐                ┌───────────────────────────────────────────┐
+│ Bot Warfare (stock, unmodified) │                │ EventTail ─▶ MatchState ─▶ fair_view      │
+│                                 │                │                              │            │
+│ shotcaller GSC mod              │  events.log    │                    Director.decide(tier)   │
+│  _telemetry  kills, scores ─────┼──────────────▶ │                              │            │
+│  _anchors    camp/home/death    │                │              pipeline.resolve (validate    │
+│  _orders     poll + enforce ◀───┼─ orders.txt ── │              + fairness + limits)          │
+│                                 │                │                              │            │
+│                                 │◀── rcon ────── │        OrderFile / MatchActuator           │
+└─────────────────────────────────┘                │        Journal ─▶ eval / replay ─▶ gating  │
+                                                   └───────────────────────────────────────────┘
+```
+
+## Why files, not HTTP
+
+GSC in IW4x can read and write files (`FileRead`, `FileWrite`, `FileExists`) but cannot POST over HTTP, and rcon needs a round trip per command. Two files are simple, debuggable with `cat`, survive a restart of either side and need no extra process. The wire format is line based because GSC has no JSON parser. See [PROTOCOL.md](PROTOCOL.md).
+
+## Game side (`gsc/`)
+
+| File | Job |
+| --- | --- |
+| `scripts/mp/shotcaller.gsc` | entry point the engine loads from `userraw/scripts/mp` |
+| `maps/mp/shotcaller/_main.gsc` | dvars, start-up order |
+| `_log.gsc` | event log: truncates per map, `emit`, `field`, name sanitising |
+| `_telemetry.gsc` | kill callback hook, joins and leaves, scoreboard snapshots, match end |
+| `_anchors.gsc` | camp waypoints, team home areas and human death sites as `w<index>` anchors |
+| `_orders.gsc` | polls `orders.txt`, applies skill, behavior percentages and goals, reverts on expiry |
+
+It hooks `level.callbackplayerkilled` one frame after Bot Warfare so both stay in the chain. It sets only Bot Warfare's own public per-bot values (`pers["bots"]["skill"]["base"]`, `pers["bots"]["behavior"][...]`) and its `SetScriptGoal` / `ClearScriptGoal`. It never calls `SetScriptEnemy`, aim or movement builtins.
+
+Safety on the game side:
+
+- Orders carry a TTL. If the sidecar dies, the mod reverts every bot to its stock values when the TTL lapses.
+- Orders name the map they were written for; orders for another map are ignored.
+- An order set with nothing in it reverts the bots immediately.
+- Values are clamped again in GSC (skill 1-7, behaviors 0-100, goal radius 16-1000).
+
+## Sidecar (`src/shotcaller/`)
+
+| Module | Job |
+| --- | --- |
+| `events`, `tail` | parse the event log; read only complete new lines; notice truncation |
+| `state` | `MatchState`: roster, scores, kill feed, anchors, rebuilt from events |
+| `fairness` | the only view a director gets; which anchors are legal goals |
+| `orders`, `schema` | typed orders, wire encoding, JSON schemas per tier |
+| `validate`, `pipeline` | one path from a proposal to safe orders, used live and in eval |
+| `director/` | `Director` protocol; `StaticDirector` baseline; `LlmDirector` for any OpenAI-compatible endpoint; prompts |
+| `service` | the loop: tail, track, schedule tiers, collect answers, write orders, journal |
+| `actuator`, `rcon` | atomic order file; server-wide knobs over rcon |
+| `journal` | append-only JSONL of every decision with the exact view |
+| `eval/`, `gating` | scenario suite, per-tier scores, replay, and which tiers a model has earned |
+| `config`, `cli` | TOML config; `run`, `eval`, `replay`, `doctor` |
+
+The service runs director calls on a small thread pool so a slow `squad` call never delays a `chat` reaction. A tier never has two calls in flight. Calls are made on a snapshot of the view; answers are validated against the state as it is when they return.
+
+## Tiers and fallbacks
+
+| Tier | Trigger | Output | If the model fails |
+| --- | --- | --- | --- |
+| `match` | new map, then every `match_s` | skill window, bot count, next map via rcon | nothing changes |
+| `squad` | every `squad_s` with a human playing | team/bot orders in the order file | after one TTL without a valid answer the static baseline takes over |
+| `chat` | human kills and kills of a bot by the human, rate limited | lines written once into the next order file | nothing is said |
+
+A tier whose model has no passing eval report does not run on the model at all (squad falls back to the static baseline; match and chat stay silent) unless `trust_unvalidated` is set.
+
+## Extending
+
+- **A new model:** change `[llm] model`, run `shotcaller eval`, restart. Gating turns tiers on by evidence.
+- **A new director:** implement `decide(tier, view, trigger) -> Proposal`. It goes through the same validation, so it cannot break the fairness rules.
+- **A new order type:** add it to `orders.py`, `schema.py`, `validate.py`, the wire format (`PROTOCOL.md`) and `_orders.gsc`, and bump `schema.VERSION` so old eval reports stop gating the new shape.
+- **A new scenario:** add one to `eval/scenarios.py` with a property check.
