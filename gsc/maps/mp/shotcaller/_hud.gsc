@@ -144,7 +144,7 @@ ensure()
 	h.lineBottom = self shaderElem( "white", 40, 2, "fullscreen", "middle", "center", "middle", 320, -66, 21 );
 	h.icon = self shaderElem( "white", 36, 36, "center", "middle", "center", "middle", -280, -100, 31 );
 	h.title = self textElem( "hudbig", 1.9, "center", "middle", "center", "middle", 0, -100, 30 );
-	h.sub = self textElem( "objective", 1.2, "center", "middle", "center", "middle", 0, -78, 30 );
+	h.sub = self textElem( "objective", 1.4, "center", "middle", "center", "middle", 0, -78, 30 );
 	h.streakLabel = self textElem( "objective", 1.15, "right", "middle", "right", "middle", -22, -36, 12 );
 	h.streakValue = self textElem( "hudbig", 2.4, "right", "middle", "right", "middle", -22, -8, 12 );
 	h.count = self textElem( "hudbig", 3.2, "center", "middle", "center", "middle", 0, -176, 22 );
@@ -248,7 +248,7 @@ playBanner( spec )
 	h.title.color = spec.color;
 	h.title.glowColor = spec.glow;
 	h.title.glowAlpha = 1;
-	h.title.fontScale = 3.6 * k * 0.6;
+	h.title.fontScale = 4.4 * k * 0.6;
 	h.title.alpha = 0;
 	h.title setText( spec.title );
 
@@ -274,7 +274,7 @@ playBanner( spec )
 	h.lineTop scaleOverTime( 0.16, 640, 2 );
 	h.lineBottom scaleOverTime( 0.16, 640, 2 );
 	h.title changeFontScaleOverTime( 0.12 );
-	h.title.fontScale = 1.9 * k * 0.6;
+	h.title.fontScale = 2.5 * k * 0.6;
 	h.title fadeOverTime( 0.12 );
 	h.title.alpha = 1;
 
