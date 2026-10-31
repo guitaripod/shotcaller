@@ -22,7 +22,7 @@ Schema: {"rationale": string, "bots": [{"slot": int, "skill"?: int, "goal"?: {"a
 MATCH = (
     _RULES
     + """
-Task: set the server-wide knobs for the next stretch of play: the bot skill window (skill_min, skill_max), the number of bots (bot_count) and optionally the next map (next_map, one of the listed maps).
+Task: set the server-wide knobs for the next stretch of play: the bot skill window (skill_min, skill_max), the number of bots (bot_count) and optionally your recommended next map (next_map, one of the listed maps). Players see your pick first in the end-of-match map vote, and it wins if nobody votes, so pick a map that suits how the match is going.
 Read summary.human_state. When the human is dominating, raise skill_min (and skill_max if needed); when struggling, lower skill_max (and skill_min if needed); when balanced, answer with just the rationale. Leave a field out to keep it unchanged. Keep the window at most 3 wide. Prefer small moves.
 Schema: {"rationale": string, "skill_min"?: int, "skill_max"?: int, "bot_count"?: int, "next_map"?: string|null}"""
 )

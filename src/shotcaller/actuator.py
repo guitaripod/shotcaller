@@ -38,9 +38,8 @@ class OrderFile:
 class MatchActuator:
     """Applies the server-wide order through rcon."""
 
-    def __init__(self, rcon: Rcon, gametype_prefix: str = "gametype war") -> None:
+    def __init__(self, rcon: Rcon) -> None:
         self._rcon = rcon
-        self._gametype_prefix = gametype_prefix
 
     def apply(self, order: MatchOrder) -> list[str]:
         """Sends one rcon command per set field and returns the commands sent."""
@@ -52,7 +51,7 @@ class MatchActuator:
         if order.bot_count is not None:
             sent.append(f"set bots_manage_fill {order.bot_count}")
         if order.next_map is not None:
-            sent.append(f'set sv_mapRotationCurrent "{self._gametype_prefix} map {order.next_map}"')
+            sent.append(f"set sc_gm_pick {order.next_map}")
         for command in sent:
             self._rcon.send(command)
         return sent

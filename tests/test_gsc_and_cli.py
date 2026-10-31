@@ -62,3 +62,21 @@ def test_example_config_loads_and_fills_defaults(tmp_path):
     config = load(partial)
     assert config.llm.timeouts_s == {"match": 30.0, "squad": 5.0}
     assert config.gating.thresholds == {"match": 0.1, "squad": 0.9}
+
+
+@pytest.mark.parametrize("path", GSC_FILES, ids=lambda p: p.name)
+def test_gsc_never_assigns_a_size_field(path):
+    for number, line in enumerate(path.read_text().splitlines(), 1):
+        code = re.sub(r'"(?:[^"\\]|\\.)*"', '""', line.split("//")[0])
+        assert not re.search(r"\.size\s*=[^=]", code), f"{path.name}:{number} assigns .size, which is a reserved array property"
+
+
+@pytest.mark.parametrize("path", GSC_FILES, ids=lambda p: p.name)
+def test_gsc_calls_resolve_to_functions_that_exist(path):
+    defined = {}
+    for gsc in GSC_FILES:
+        rel = gsc.relative_to(GSC_ROOT).with_suffix("")
+        defined[str(rel).replace("/", "\\")] = set(re.findall(r"^([A-Za-z_][A-Za-z0-9_]*)\(.*\)$", gsc.read_text(), re.MULTILINE))
+    for number, line in enumerate(path.read_text().splitlines(), 1):
+        for module, name in re.findall(r"(maps\\mp\\shotcaller\\[A-Za-z_]+)::([A-Za-z_][A-Za-z0-9_]*)", line):
+            assert name in defined.get(module, set()), f"{path.name}:{number} calls {module}::{name}, which is not defined"

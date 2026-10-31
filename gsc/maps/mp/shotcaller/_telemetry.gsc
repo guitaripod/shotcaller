@@ -24,6 +24,7 @@ hookCallbacks()
 onPlayerKilled( eInflictor, eAttacker, iDamage, sMeansOfDeath, sWeapon, vDir, sHitLoc, timeOffset, deathAnimDuration )
 {
 	level thread logKill( self, eAttacker, sWeapon, sMeansOfDeath, self.origin );
+	level thread maps\mp\shotcaller\_hud_events::onKill( self, eAttacker, sWeapon, sMeansOfDeath, sHitLoc, self.origin );
 
 	self [[ level.sc_prevcallbackplayerkilled ]]( eInflictor, eAttacker, iDamage, sMeansOfDeath, sWeapon, vDir, sHitLoc, timeOffset, deathAnimDuration );
 }

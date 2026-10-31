@@ -18,6 +18,7 @@ One event per line: `<game ms>|<type>|key=value|key=value...`. The mod truncates
 | `anchor` | `id` (`w<waypoint index>`), `kind` (always `death`), `x y z` |
 | `ack` | `seq` of the order file just applied, `bots` with orders |
 | `expired` | the standing orders lapsed and the bots were reverted |
+| `vote` | the map vote result: `winner` map id and its `votes` |
 | `end` | final `allies` / `axis` scores |
 
 Snapshots run every `sc_snapshot_ms` (default 5000). A human death also emits a `death` anchor at the nearest waypoint.
@@ -47,4 +48,4 @@ The mod re-applies skill every second and writes an `ack`. A goal is a mission: 
 
 ## Server-wide orders (rcon)
 
-The `match` tier sets Bot Warfare dvars over rcon: `bots_skill_min`, `bots_skill_max`, `bots_manage_fill` and, for the next map, `sv_mapRotationCurrent`. The server must run with `bots_skill 0` so Bot Warfare does not overwrite per-bot skill.
+The `match` tier sets Bot Warfare dvars over rcon: `bots_skill_min`, `bots_skill_max`, `bots_manage_fill` and, for a recommended next map, `sc_gm_pick`, which the end-of-match map vote offers first (and uses if nobody votes). The server must run with `bots_skill 0` so Bot Warfare does not overwrite per-bot skill.

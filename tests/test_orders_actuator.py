@@ -46,6 +46,6 @@ def test_order_file_writes_atomically_and_bumps_the_sequence(tmp_path):
 def test_match_actuator_sends_only_set_fields():
     rcon = FakeRcon()
     sent = MatchActuator(rcon).apply(MatchOrder(skill_min=3, bot_count=8, next_map="mp_terminal"))
-    assert sent == ["set bots_skill_min 3", "set bots_manage_fill 8", 'set sv_mapRotationCurrent "gametype war map mp_terminal"']
+    assert sent == ["set bots_skill_min 3", "set bots_manage_fill 8", "set sc_gm_pick mp_terminal"]
     assert rcon.sent == sent
     assert MatchActuator(FakeRcon()).apply(MatchOrder()) == []

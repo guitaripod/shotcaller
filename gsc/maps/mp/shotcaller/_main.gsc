@@ -15,9 +15,13 @@ init()
 	}
 
 	maps\mp\shotcaller\_log::open();
+	maps\mp\shotcaller\_hud::precache();
 
 	level thread maps\mp\shotcaller\_telemetry::init();
 	level thread maps\mp\shotcaller\_orders::init();
+	level thread maps\mp\shotcaller\_hud::init();
+	level thread maps\mp\shotcaller\_hud_events::init();
+	level thread maps\mp\shotcaller\_mapvote::init();
 
 	println( "shotcaller " + level.sc_version + " ready" );
 }

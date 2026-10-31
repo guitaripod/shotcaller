@@ -17,7 +17,7 @@ The tests need no game, no model and no network: the sidecar is exercised throug
 2. Start the server on a spare port with `set bots_skill "0"`, spawn bots (`rcon spawnBot 8`) and join with a client.
 3. Point a dev config at it and run `shotcaller run`. Watch `userraw/scriptdata/shotcaller/events.log` for `ack` lines and the journal for decisions.
 
-GSC compile errors show in the server console at start-up; a script that fails to compile disables itself, so always check for `Script scripts/mp/shotcaller.gsc loaded successfully`.
+GSC compile errors show in the server console at start-up and stop the map from loading, so always check for `Script scripts/mp/shotcaller.gsc loaded successfully` and never deploy GSC you have not started a server with. The pitfalls we hit (reserved `.size`, no `notifyOnPlayerCommand`, by-value arrays) and how to preview and screenshot overlays with a headless client are in [docs/OVERLAYS.md](docs/OVERLAYS.md).
 
 ## Style
 
