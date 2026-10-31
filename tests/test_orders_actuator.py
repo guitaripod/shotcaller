@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from shotcaller.actuator import MatchActuator, OrderFile
-from shotcaller.orders import BotOrder, ChatLine, Goal, MatchOrder, Squad, encode, squad_to_dict
+from shotcaller.orders import BotOrder, Goal, MatchOrder, Squad, encode, squad_to_dict
 
 
 class FakeRcon:
@@ -18,12 +18,11 @@ def sample_squad() -> Squad:
 
 
 def test_encode_matches_the_wire_format_the_gsc_parses():
-    text = encode(12, "mp_rust", 45000, sample_squad(), [ChatLine(7, "all", "Nice try.")])
+    text = encode(12, "mp_rust", 45000, sample_squad())
     assert text == (
         "seq|12\nmap|mp_rust\nttl|45000\n"
         "bot|7|skill=5|goal=w123:150:15\n"
         "bot|9|skill=2\n"
-        "chat|7|all|Nice try.\n"
     )
 
 
@@ -35,8 +34,8 @@ def test_squad_to_dict_omits_empty_orders():
 
 def test_order_file_writes_atomically_and_bumps_the_sequence(tmp_path):
     orders = OrderFile(tmp_path / "shotcaller" / "orders.txt")
-    first = orders.write("mp_rust", 1000, Squad(), [])
-    second = orders.write("mp_rust", 1000, sample_squad(), [])
+    first = orders.write("mp_rust", 1000, Squad())
+    second = orders.write("mp_rust", 1000, sample_squad())
     assert (first, second) == (1, 2)
     assert (tmp_path / "shotcaller" / "orders.txt").read_text().startswith("seq|2\n")
     assert not list((tmp_path / "shotcaller").glob("*.tmp"))

@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from .orders import RADIUS_RANGE, SKILL_RANGE
 
-VERSION = 2
+VERSION = 3
 
 _SKILL = {"type": "integer", "minimum": SKILL_RANGE[0], "maximum": SKILL_RANGE[1]}
 
@@ -52,26 +52,4 @@ MATCH = {
     "additionalProperties": False,
 }
 
-CHAT = {
-    "type": "object",
-    "properties": {
-        "lines": {
-            "type": "array",
-            "maxItems": 2,
-            "items": {
-                "type": "object",
-                "properties": {
-                    "slot": {"type": "integer", "minimum": 0, "maximum": 17},
-                    "scope": {"enum": ["all", "team"]},
-                    "text": {"type": "string", "maxLength": 80},
-                },
-                "required": ["slot", "scope", "text"],
-                "additionalProperties": False,
-            },
-        }
-    },
-    "required": ["lines"],
-    "additionalProperties": False,
-}
-
-BY_TIER = {"squad": SQUAD, "match": MATCH, "chat": CHAT}
+BY_TIER = {"squad": SQUAD, "match": MATCH}

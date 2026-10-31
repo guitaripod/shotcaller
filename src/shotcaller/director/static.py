@@ -15,12 +15,10 @@ class StaticDirector:
 
     name = "static"
 
-    def decide(self, tier: Tier, view: dict, trigger: dict | None = None) -> Proposal:
-        """Answers the squad tier; every other tier gets an empty proposal."""
+    def decide(self, tier: Tier, view: dict) -> Proposal:
+        """Answers the squad tier; the match tier gets an empty proposal."""
         if tier is Tier.SQUAD:
             return Proposal(data=self._squad(view), model=self.name)
-        if tier is Tier.CHAT:
-            return Proposal(data={"lines": []}, model=self.name)
         return Proposal(data={"rationale": "static baseline holds the match settings"}, model=self.name)
 
     def _squad(self, view: dict) -> dict:

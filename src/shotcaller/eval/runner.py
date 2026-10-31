@@ -15,7 +15,8 @@ from ..validate import Limits
 from .scenarios import SCENARIOS, Scenario
 
 WEIGHTS = {"valid": 0.3, "passed": 0.5, "latency": 0.2}
-DEFAULT_BUDGETS_S = {"match": 30.0, "squad": 25.0, "chat": 8.0}
+DEFAULT_BUDGETS_S = {"match": 30.0, "squad": 25.0}
+DEFAULT_RUNS = 3
 
 
 @dataclass(slots=True)
@@ -48,9 +49,8 @@ class TierScore:
 def run_scenario(director: Director, scenario: Scenario, policy: FairnessPolicy, limits: Limits) -> ScenarioResult:
     """Asks the director, validates through the production pipeline and checks the scenario's property."""
     state = scenario.build()
-    trigger = scenario.trigger(state) if scenario.trigger else None
     view = fair_view(state, policy)
-    proposal = director.decide(scenario.tier, view, trigger)
+    proposal = director.decide(scenario.tier, view)
     resolved = resolve(scenario.tier, proposal, state, policy, limits)
     result = ScenarioResult(scenario.id, scenario.tier.value, resolved.valid, False, "", proposal.latency_ms, resolved.issues)
     if resolved.valid:
@@ -88,10 +88,17 @@ def score_tier(results: list[ScenarioResult], budget_s: float) -> TierScore:
     return TierScore(count, valid, passed, latency_ok, int(statistics.median(latencies)), p95, round(score, 3))
 
 
-def run_eval(director: Director, policy: FairnessPolicy, limits: Limits, budgets_s: dict[str, float] | None = None, scenarios: tuple[Scenario, ...] = SCENARIOS) -> dict:
-    """Runs every scenario and returns a JSON-ready report with per-tier scores."""
+def run_eval(
+    director: Director,
+    policy: FairnessPolicy,
+    limits: Limits,
+    budgets_s: dict[str, float] | None = None,
+    scenarios: tuple[Scenario, ...] = SCENARIOS,
+    runs: int = DEFAULT_RUNS,
+) -> dict:
+    """Runs every scenario `runs` times, since models are stochastic, and returns a JSON-ready report with per-tier scores."""
     budgets = {**DEFAULT_BUDGETS_S, **(budgets_s or {})}
-    results = [run_scenario(director, s, policy, limits) for s in scenarios]
+    results = [run_scenario(director, s, policy, limits) for s in scenarios for _ in range(runs)]
     tiers = {}
     for tier in Tier:
         subset = [r for r in results if r.tier == tier.value]
@@ -101,6 +108,7 @@ def run_eval(director: Director, policy: FairnessPolicy, limits: Limits, budgets
         "schema": schema.VERSION,
         "model": director.name,
         "created": datetime.now(UTC).isoformat(timespec="seconds"),
+        "runs": runs,
         "tiers": tiers,
         "scenarios": [asdict(r) for r in results],
     }

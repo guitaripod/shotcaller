@@ -30,7 +30,6 @@ class ScriptedDirector:
 
 
 SQUAD_ANSWER = {"rationale": "go", "bots": [{"slot": 1, "skill": 4, "goal": {"anchor": "w41", "radius": 200}}]}
-CHAT_ANSWER = {"lines": [{"slot": 1, "scope": "all", "text": "Gotcha."}]}
 MATCH_ANSWER = {"rationale": "ease", "skill_min": 2}
 
 
@@ -80,7 +79,7 @@ def test_squad_runs_on_its_interval_only(tmp_path):
 
 
 def test_orders_are_refreshed_by_the_heartbeat_so_they_do_not_expire(tmp_path):
-    service, _, orders, _ = build(tmp_path, ScriptedDirector({Tier.SQUAD: SQUAD_ANSWER}), {Tier.SQUAD: True, Tier.MATCH: False, Tier.CHAT: False})
+    service, _, orders, _ = build(tmp_path, ScriptedDirector({Tier.SQUAD: SQUAD_ANSWER}), {Tier.SQUAD: True, Tier.MATCH: False})
     service.step(0.0)
     service.step(0.5)
     first = orders.read_text().splitlines()[0]
@@ -88,32 +87,8 @@ def test_orders_are_refreshed_by_the_heartbeat_so_they_do_not_expire(tmp_path):
     assert orders.read_text().splitlines()[0] != first
 
 
-def test_a_human_death_triggers_one_chat_line_then_it_is_not_repeated(tmp_path):
-    director = ScriptedDirector({Tier.SQUAD: SQUAD_ANSWER, Tier.CHAT: CHAT_ANSWER})
-    service, events, orders, _ = build(tmp_path, director, {Tier.SQUAD: True, Tier.MATCH: False, Tier.CHAT: True})
-    service.step(0.0)
-    service.step(0.5)
-    append(events, "6000|kill|vn=0|v=marcus|vt=allies|vb=0|w=m4a1_mp|mod=MOD_RIFLE_BULLET|x=1|y=2|z=3|an=1|a=bot1|at=axis|ab=1")
-    service.step(1.0)
-    service.step(1.5)
-    chat_calls = [trigger for tier, trigger in director.calls if tier is Tier.CHAT]
-    assert len(chat_calls) == 1 and chat_calls[0]["type"] == "human_killed" and chat_calls[0]["personas"]
-    service.step(9.0)
-    assert "chat|" not in orders.read_text()
-
-
-def test_chat_is_rate_limited(tmp_path):
-    director = ScriptedDirector({Tier.CHAT: CHAT_ANSWER})
-    service, events, *_ = build(tmp_path, director, {Tier.SQUAD: False, Tier.MATCH: False, Tier.CHAT: True})
-    kill = "6000|kill|vn=0|v=marcus|vt=allies|vb=0|w=m4a1_mp|mod=MOD_RIFLE_BULLET|x=1|y=2|z=3|an=1|a=bot1|at=axis|ab=1"
-    for now in (0.0, 1.0, 2.0):
-        append(events, kill)
-        service.step(now)
-    assert [t for t, _ in director.calls].count(Tier.CHAT) == 1
-
-
 def test_a_new_map_clears_the_orders_and_names_the_new_map(tmp_path):
-    service, events, orders, _ = build(tmp_path, ScriptedDirector({Tier.SQUAD: SQUAD_ANSWER}), {Tier.SQUAD: True, Tier.MATCH: False, Tier.CHAT: False})
+    service, events, orders, _ = build(tmp_path, ScriptedDirector({Tier.SQUAD: SQUAD_ANSWER}), {Tier.SQUAD: True, Tier.MATCH: False})
     service.step(0.0)
     service.step(0.5)
     append(events, "0|hello|v=0.1.0|map=mp_terminal|gametype=war|slots=12")
@@ -123,7 +98,7 @@ def test_a_new_map_clears_the_orders_and_names_the_new_map(tmp_path):
 
 
 def test_a_failing_model_falls_back_to_the_static_director_and_the_journal_records_it(tmp_path):
-    service, _, orders, _ = build(tmp_path, ScriptedDirector({Tier.SQUAD: None}), {Tier.SQUAD: False, Tier.MATCH: False, Tier.CHAT: False})
+    service, _, orders, _ = build(tmp_path, ScriptedDirector({Tier.SQUAD: None}), {Tier.SQUAD: False, Tier.MATCH: False})
     service.step(0.0)
     service.step(0.5)
     entries = [e for e in journal.read(tmp_path / "journal.jsonl") if e["kind"] == "decision"]
@@ -143,7 +118,7 @@ def test_a_failing_model_is_journaled_and_the_static_baseline_takes_over(tmp_pat
 
 def test_a_model_that_recovers_replaces_the_baseline(tmp_path):
     director = ScriptedDirector({Tier.SQUAD: None})
-    service, _, orders, _ = build(tmp_path, director, {Tier.SQUAD: True, Tier.MATCH: False, Tier.CHAT: False})
+    service, _, orders, _ = build(tmp_path, director, {Tier.SQUAD: True, Tier.MATCH: False})
     service.step(0.0)
     service.step(0.5)
     director.answers[Tier.SQUAD] = SQUAD_ANSWER

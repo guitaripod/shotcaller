@@ -7,7 +7,6 @@ init()
 	level.sc_seq = -1;
 	level.sc_expires = 0;
 	level.sc_bot_orders = [];
-	level.sc_chat_at = [];
 
 	level thread pollLoop();
 	level thread enforceLoop();
@@ -73,8 +72,6 @@ ingest( lines, seq )
 	level.sc_bot_orders = [];
 	level.sc_expires = gettime() + 30000;
 
-	chats = 0;
-
 	for ( i = 1; i < lines.size; i++ )
 	{
 		parts = strtok( lines[ i ], "|" );
@@ -92,9 +89,6 @@ ingest( lines, seq )
 			case "bot":
 				level.sc_bot_orders[ "b" + parts[ 1 ] ] = parsePairs( parts, 2 );
 				break;
-			case "chat":
-				chats += sayLine( parts );
-				break;
 		}
 	}
 
@@ -105,7 +99,7 @@ ingest( lines, seq )
 
 	applied = enforce();
 
-	emit( "ack", field( "seq", seq ) + field( "bots", applied ) + field( "chats", chats ) );
+	emit( "ack", field( "seq", seq ) + field( "bots", applied ) );
 }
 
 /// Whether the order file names the map that is running, so orders written for the previous map are ignored.
@@ -140,60 +134,6 @@ parsePairs( parts, start )
 	}
 
 	return pairs;
-}
-
-/// Makes one bot say a line, at most once per ten seconds per bot, and returns 1 when it spoke.
-sayLine( parts )
-{
-	if ( parts.size < 4 )
-	{
-		return 0;
-	}
-
-	bot = botBySlot( parts[ 1 ] );
-
-	if ( !isdefined( bot ) )
-	{
-		return 0;
-	}
-
-	last = level.sc_chat_at[ "b" + parts[ 1 ] ];
-
-	if ( isdefined( last ) && gettime() - last < 10000 )
-	{
-		return 0;
-	}
-
-	level.sc_chat_at[ "b" + parts[ 1 ] ] = gettime();
-
-	text = getsubstr( parts[ 3 ], 0, 100 );
-
-	if ( parts[ 2 ] == "team" )
-	{
-		bot sayteam( text );
-	}
-	else
-	{
-		bot sayall( text );
-	}
-
-	return 1;
-}
-
-/// Finds a connected bot by its slot number string.
-botBySlot( slot )
-{
-	bots = getBotArray();
-
-	for ( i = 0; i < bots.size; i++ )
-	{
-		if ( ( bots[ i ] getentitynumber() + "" ) == slot )
-		{
-			return bots[ i ];
-		}
-	}
-
-	return undefined;
 }
 
 /// Ends finished missions every second, and reverts the bots to stock behavior once the orders expire.

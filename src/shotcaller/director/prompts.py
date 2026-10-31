@@ -23,16 +23,8 @@ MATCH = (
     _RULES
     + """
 Task: set the server-wide knobs for the next stretch of play: the bot skill window (skill_min, skill_max), the number of bots (bot_count) and optionally the next map (next_map, one of the listed maps).
-Leave a field out to keep it unchanged. Keep the window at most 3 wide. Prefer small moves.
+Read summary.human_state. When the human is dominating, raise skill_min (and skill_max if needed); when struggling, lower skill_max (and skill_min if needed); when balanced, answer with just the rationale. Leave a field out to keep it unchanged. Keep the window at most 3 wide. Prefer small moves.
 Schema: {"rationale": string, "skill_min"?: int, "skill_max"?: int, "bot_count"?: int, "next_map"?: string|null}"""
 )
 
-CHAT = (
-    _RULES
-    + """
-Task: react to the event with at most two short chat lines, each from a different bot that was involved or nearby. Stay in character, be playful, never cruel, no slurs, no real-world references, under 80 characters, no color codes.
-Events that involve the human deserve a reaction. A kill between two bots almost never does: return {"lines": []} for those.
-Schema: {"lines": [{"slot": int, "scope": "all"|"team", "text": string}]}"""
-)
-
-BY_TIER = {"squad": SQUAD, "match": MATCH, "chat": CHAT}
+BY_TIER = {"squad": SQUAD, "match": MATCH}

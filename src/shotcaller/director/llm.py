@@ -24,8 +24,8 @@ class LlmConfig:
     base_url: str = "http://127.0.0.1:8081/v1"
     model: str = ""
     api_key: str = ""
-    timeouts_s: dict[str, float] = field(default_factory=lambda: {"match": 30.0, "squad": 25.0, "chat": 8.0})
-    max_tokens: dict[str, int] = field(default_factory=lambda: {"match": 400, "squad": 900, "chat": 200})
+    timeouts_s: dict[str, float] = field(default_factory=lambda: {"match": 30.0, "squad": 25.0})
+    max_tokens: dict[str, int] = field(default_factory=lambda: {"match": 400, "squad": 900})
     temperature: float = 0.7
     structured_output: bool = True
     extra_body: dict = field(default_factory=dict)
@@ -47,9 +47,9 @@ class LlmDirector:
         self.name = config.model
         self._transport = transport
 
-    def decide(self, tier: Tier, view: dict, trigger: dict | None = None) -> Proposal:
+    def decide(self, tier: Tier, view: dict) -> Proposal:
         """Calls the model for one tier and returns its parsed answer or the error."""
-        messages = self._messages(tier, view, trigger)
+        messages = self._messages(tier, view)
         started = time.monotonic()
         try:
             text = self._complete(tier, messages)
@@ -62,10 +62,8 @@ class LlmDirector:
         error = None if data is not None else "unparseable"
         return Proposal(data=data, raw=text, model=self.name, latency_ms=_elapsed_ms(started), error=error)
 
-    def _messages(self, tier: Tier, view: dict, trigger: dict | None) -> list[dict]:
+    def _messages(self, tier: Tier, view: dict) -> list[dict]:
         content: dict[str, object] = {"view": view}
-        if trigger is not None:
-            content["event"] = trigger
         if tier is Tier.MATCH:
             content["maps"] = list(self.config.maps)
         return [

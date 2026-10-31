@@ -44,15 +44,6 @@ class Squad:
 
 
 @dataclass(frozen=True, slots=True)
-class ChatLine:
-    """One thing a bot says in chat."""
-
-    slot: int
-    scope: str
-    text: str
-
-
-@dataclass(frozen=True, slots=True)
 class MatchOrder:
     """Server-wide knobs applied over rcon: the bot skill window, head count and next map."""
 
@@ -66,14 +57,12 @@ class MatchOrder:
         return self.skill_min is None and self.skill_max is None and self.bot_count is None and self.next_map is None
 
 
-def encode(seq: int, map_name: str, ttl_ms: int, squad: Squad, chat: list[ChatLine]) -> str:
-    """Renders the order file: header lines, then bot and chat lines."""
+def encode(seq: int, map_name: str, ttl_ms: int, squad: Squad) -> str:
+    """Renders the order file: header lines, then one line per ordered bot."""
     lines = [f"seq|{seq}", f"map|{map_name}", f"ttl|{ttl_ms}"]
     for bot in squad.bots:
         if not bot.is_empty():
             lines.append("|".join(["bot", str(bot.slot), *_bot_pairs(bot)]))
-    for line in chat:
-        lines.append(f"chat|{line.slot}|{line.scope}|{line.text}")
     return "\n".join(lines) + "\n"
 
 

@@ -7,7 +7,7 @@ from dataclasses import dataclass
 from typing import Any
 
 from ..director.base import Tier
-from ..orders import ChatLine, MatchOrder, Squad
+from ..orders import MatchOrder, Squad
 from ..state import Anchor, Kill, MatchState, Player
 
 Check = Callable[[Any, MatchState], tuple[bool, str]]
@@ -21,7 +21,6 @@ class Scenario:
     tier: Tier
     build: Callable[[], MatchState]
     check: Check
-    trigger: Callable[[MatchState], dict] | None = None
     repeats: bool = False
 
 
@@ -82,24 +81,6 @@ def _clean_match(value: Any, _state: MatchState) -> tuple[bool, str]:
     return isinstance(value, MatchOrder), "match order accepted"
 
 
-def _bot_replies(value: Any, _state: MatchState) -> tuple[bool, str]:
-    lines: list[ChatLine] = value
-    ok = 1 <= len(lines) <= 2 and any(line.slot in (2, 5, 6, 7) for line in lines)
-    return ok, f"{len(lines)} lines from {[line.slot for line in lines]}"
-
-
-def _stays_quiet(value: Any, _state: MatchState) -> tuple[bool, str]:
-    return len(value) <= 1, f"{len(value)} lines"
-
-
-def _human_death_trigger(state: MatchState) -> dict:
-    return {"type": "human_killed", "victim": "marcus", "attacker_slot": 2, "attacker": "axis2", "weapon": "m4a1_mp", "personas": {"2": "cocky veteran", "5": "cheerful rookie"}}
-
-
-def _bot_duel_trigger(state: MatchState) -> dict:
-    return {"type": "bot_killed_bot", "victim_slot": 3, "attacker_slot": 6, "weapon": "ak47_mp", "personas": {"3": "dry deadpan sniper", "6": "trash-talking showboat"}}
-
-
 SCENARIOS: tuple[Scenario, ...] = (
     Scenario("human_dominating", Tier.SQUAD, lambda: build_state(18, 4), _raises_skill),
     Scenario("human_struggling", Tier.SQUAD, lambda: build_state(3, 14), _lowers_skill),
@@ -107,6 +88,4 @@ SCENARIOS: tuple[Scenario, ...] = (
     Scenario("human_camps_one_spot", Tier.SQUAD, lambda: build_state(12, 6, deaths_at=["w50", "w51", "w52"]), _contests_deaths, repeats=True),
     Scenario("match_too_easy", Tier.MATCH, lambda: build_state(24, 3), _raises_window),
     Scenario("match_steady", Tier.MATCH, lambda: build_state(10, 10), _clean_match),
-    Scenario("chat_human_killed", Tier.CHAT, lambda: build_state(5, 6), _bot_replies, _human_death_trigger),
-    Scenario("chat_bot_duel", Tier.CHAT, lambda: build_state(5, 6), _stays_quiet, _bot_duel_trigger),
 )

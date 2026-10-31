@@ -35,6 +35,7 @@ def main(argv: list[str] | None = None) -> int:
     evaluate = commands.add_parser("eval", help="score the configured model on the scenario suite and store its report")
     evaluate.add_argument("--model", help="override the configured model id")
     evaluate.add_argument("--baseline", action="store_true", help="score the static baseline instead of a model")
+    evaluate.add_argument("--runs", type=int, default=3, help="times to run each scenario, since models are stochastic (default 3)")
     replay_parser = commands.add_parser("replay", help="re-run a model on the states recorded in a journal")
     replay_parser.add_argument("journal", type=Path)
     replay_parser.add_argument("--model", help="override the configured model id")
@@ -78,14 +79,21 @@ def _stop(signum: int, frame: object) -> None:
 
 def _eval(config: Config, args: argparse.Namespace) -> int:
     director = StaticDirector() if args.baseline else _director(config, args.model)
-    report = run_eval(director, config.fairness, config.limits, config.llm.timeouts_s)
+    report = run_eval(director, config.fairness, config.limits, config.llm.timeouts_s, runs=args.runs)
     path = gating.save_report(config.gating.reports_dir, report)
     for tier, score in report["tiers"].items():
         print(f"{tier:6} score={score['score']:.3f} valid={score['valid']:.2f} passed={score['passed']:.2f} p95={score['p95_ms']}ms")
-    for result in report["scenarios"]:
-        print(f"  {'PASS' if result['passed'] else 'FAIL'} {result['id']}: {result['detail']}")
+    for scenario_id, outcomes in _by_scenario(report["scenarios"]).items():
+        print(f"  {sum(outcomes)}/{len(outcomes)} {scenario_id}")
     print(f"report: {path}")
     return 0
+
+
+def _by_scenario(results: list[dict]) -> dict[str, list[bool]]:
+    grouped: dict[str, list[bool]] = {}
+    for result in results:
+        grouped.setdefault(result["id"], []).append(result["passed"])
+    return grouped
 
 
 def _replay(config: Config, args: argparse.Namespace) -> int:

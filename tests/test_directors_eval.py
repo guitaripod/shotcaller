@@ -45,7 +45,7 @@ def test_llm_director_reports_transport_errors_without_raising():
     def transport(*_):
         raise urllib.error.URLError("connection refused")
 
-    proposal = LlmDirector(LlmConfig(model="m"), transport).decide(Tier.CHAT, {})
+    proposal = LlmDirector(LlmConfig(model="m"), transport).decide(Tier.MATCH, {})
     assert proposal.data is None and "URLError" in proposal.error
 
 
@@ -61,11 +61,10 @@ def test_static_director_raises_skill_when_the_human_dominates_and_lowers_it_whe
 
 def test_eval_scores_the_static_baseline_per_tier():
     report = run_eval(StaticDirector(), POLICY, LIMITS)
-    assert set(report["tiers"]) == {"match", "squad", "chat"}
+    assert set(report["tiers"]) == {"match", "squad"}
     by_id = {s["id"]: s for s in report["scenarios"]}
     assert by_id["human_dominating"]["passed"] and by_id["human_struggling"]["passed"] and by_id["human_balanced"]["passed"]
     assert not by_id["human_camps_one_spot"]["passed"]
-    assert not by_id["chat_human_killed"]["passed"]
 
 
 def test_eval_scores_an_oracle_model_at_the_top():
@@ -74,9 +73,7 @@ def test_eval_scores_an_oracle_model_at_the_top():
         view = json.loads(body["messages"][1]["content"])["view"]
         if "adjust the bots now" in system:
             return reply(json.dumps(squad_answer(view)))
-        if "server-wide knobs" in system:
-            return reply('{"rationale": "easy", "skill_min": 4, "skill_max": 7}')
-        return reply('{"lines": [{"slot": 2, "scope": "all", "text": "Better luck next time."}]}')
+        return reply('{"rationale": "easy", "skill_min": 4, "skill_max": 7}')
 
     report = run_eval(LlmDirector(LlmConfig(model="oracle"), transport), POLICY, LIMITS)
     failed = [s["id"] for s in report["scenarios"] if not s["passed"]]
@@ -99,12 +96,12 @@ def squad_answer(view: dict) -> dict:
 
 
 def test_gating_enables_tiers_from_the_stored_report(tmp_path):
-    config = Gating(reports_dir=tmp_path, thresholds={"match": 0.6, "squad": 0.7, "chat": 0.6})
+    config = Gating(reports_dir=tmp_path, thresholds={"match": 0.6, "squad": 0.7})
     assert not any(gating.enabled_tiers(config, "model-a").values())
     assert all(gating.enabled_tiers(Gating(reports_dir=tmp_path, trust_unvalidated=True), "model-a").values())
-    report = {"schema": schema.VERSION, "model": "model-a", "tiers": {"match": {"score": 0.9}, "squad": {"score": 0.5}, "chat": {"score": 0.7}}}
+    report = {"schema": schema.VERSION, "model": "model-a", "tiers": {"match": {"score": 0.9}, "squad": {"score": 0.5}}}
     gating.save_report(tmp_path, report)
-    assert gating.enabled_tiers(config, "model-a") == {Tier.MATCH: True, Tier.SQUAD: False, Tier.CHAT: True}
+    assert gating.enabled_tiers(config, "model-a") == {Tier.MATCH: True, Tier.SQUAD: False}
 
 
 def test_every_scenario_has_a_unique_id_and_a_buildable_state():

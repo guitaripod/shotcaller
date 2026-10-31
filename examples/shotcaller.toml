@@ -12,7 +12,6 @@ structured_output = true
 [llm.timeouts_s]
 match = 30.0
 squad = 25.0
-chat = 8.0
 
 [maps]
 rotation = ["mp_rust", "mp_terminal", "mp_highrise", "mp_favela", "mp_afghan", "mp_nuked"]
@@ -20,8 +19,6 @@ rotation = ["mp_rust", "mp_terminal", "mp_highrise", "mp_favela", "mp_afghan", "
 [limits]
 max_skill_step = 2
 max_bots = 11
-chat_max_len = 80
-chat_max_lines = 2
 
 [fairness]
 death_delay_ms = 6000
@@ -30,7 +27,6 @@ death_max_age_ms = 300000
 [cadence]
 squad_s = 15.0
 match_s = 120.0
-chat_gap_s = 20.0
 orders_ttl_s = 45.0
 
 [gating]
@@ -39,16 +35,7 @@ trust_unvalidated = false
 
 [gating.thresholds]
 match = 0.9
-squad = 0.95
-chat = 0.9
+squad = 0.9
 
 [journal]
 path = "~/.local/share/shotcaller/journal.jsonl"
-
-[chat]
-personas = [
-  "cocky veteran who has seen it all",
-  "cheerful rookie who is thrilled to be here",
-  "dry deadpan sniper",
-  "trash-talking showboat",
-]

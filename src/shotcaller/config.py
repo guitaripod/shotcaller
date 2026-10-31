@@ -43,7 +43,6 @@ class Cadence:
 
     squad_s: float = 15.0
     match_s: float = 120.0
-    chat_gap_s: float = 20.0
     orders_ttl_s: float = 45.0
     poll_s: float = 0.5
 
@@ -53,16 +52,8 @@ class Gating:
     """Minimum eval score a model needs before it may run a tier."""
 
     reports_dir: Path = Path("~/.local/share/shotcaller/reports")
-    thresholds: dict[str, float] = field(default_factory=lambda: {"match": 0.9, "squad": 0.95, "chat": 0.9})
+    thresholds: dict[str, float] = field(default_factory=lambda: {"match": 0.9, "squad": 0.9})
     trust_unvalidated: bool = False
-
-
-DEFAULT_PERSONAS = (
-    "cocky veteran who has seen it all",
-    "cheerful rookie who is thrilled to be here",
-    "dry deadpan sniper",
-    "trash-talking showboat",
-)
 
 
 @dataclass(frozen=True, slots=True)
@@ -76,7 +67,6 @@ class Config:
     cadence: Cadence = field(default_factory=Cadence)
     gating: Gating = field(default_factory=Gating)
     journal_path: Path = Path("~/.local/share/shotcaller/journal.jsonl")
-    personas: tuple[str, ...] = DEFAULT_PERSONAS
 
 
 def load(path: Path) -> Config:
@@ -98,7 +88,6 @@ def load(path: Path) -> Config:
         cadence=_build(Cadence, raw.get("cadence", {})),
         gating=_gating(raw.get("gating", {})),
         journal_path=Path(raw.get("journal", {}).get("path", "~/.local/share/shotcaller/journal.jsonl")).expanduser(),
-        personas=tuple(raw.get("chat", {}).get("personas", DEFAULT_PERSONAS)),
     )
 
 

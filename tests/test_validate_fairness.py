@@ -4,7 +4,7 @@ import json
 
 from shotcaller.events import parse_line
 from shotcaller.fairness import FairnessPolicy, fair_view, legal_anchors
-from shotcaller.validate import Limits, clean_chat, extract_json, validate_chat, validate_match, validate_squad
+from shotcaller.validate import Limits, extract_json, validate_match, validate_squad
 
 POLICY = FairnessPolicy()
 LIMITS = Limits(maps=("mp_rust", "mp_terminal"))
@@ -84,21 +84,3 @@ def test_match_order_clamps_and_checks_the_map(match_state):
 def test_match_order_drops_an_inverted_window(match_state):
     result = validate_match({"skill_min": 6, "skill_max": 2}, match_state, LIMITS)
     assert result.value.skill_min is None and result.issues
-
-
-def test_chat_only_from_bots_and_sanitized(match_state):
-    proposal = {
-        "lines": [
-            {"slot": 1, "scope": "all", "text": "^1Nice|shot=lol\nbro" + "!" * 200},
-            {"slot": 0, "scope": "all", "text": "human impersonation"},
-            {"slot": 2, "scope": "shout", "text": "bad scope"},
-            {"slot": 2, "scope": "team", "text": "ok"},
-        ]
-    }
-    lines = validate_chat(proposal, match_state, LIMITS).value
-    assert [line.slot for line in lines] == [1]
-    assert "|" not in lines[0].text and "^" not in lines[0].text and len(lines[0].text) <= 80
-
-
-def test_clean_chat_collapses_whitespace():
-    assert clean_chat("  a \t b  ", 80) == "a b"

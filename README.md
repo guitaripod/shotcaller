@@ -2,7 +2,7 @@
 
 An LLM game master for [Bot Warfare](https://github.com/ineedbots/iw4x_bot_warfare) bots on [IW4x](https://iw4x.io) (Call of Duty: Modern Warfare 2) servers.
 
-The LLM never aims, moves or shoots. Bot Warfare keeps all of that, including how bots roam the map. shotcaller changes only the things a model can actually improve: how sharp each bot is, a short mission to where you keep dying, the server's bot settings, and what the bots say. It is built so that a better model, dropped in behind one alias, does the job better without changing any code.
+The LLM never aims, moves or shoots. Bot Warfare keeps all of that, including how bots roam the map. shotcaller changes only the things a model can actually improve: how sharp each bot is, a short mission to where you keep dying, and the server's bot settings. It is built so that a better model, dropped in behind one alias, does the job better without changing any code.
 
 ```
  IW4x server (Wine)                         shotcaller sidecar (Python, stdlib only)
@@ -22,10 +22,9 @@ The LLM never aims, moves or shoots. Bot Warfare keeps all of that, including ho
 | --- | --- | --- |
 | `match` | per map, then every ~2 min | bot skill window, bot count, next map |
 | `squad` | every ~15 s | per-bot skill (opponents harder or easier to keep the match close), and at most two timed missions to where the human keeps dying |
-| `chat` | on events, rate limited | short in-character lines from the bots involved |
 | everything else | never | aim, movement, firing, camping, sprinting, spawn behavior: Bot Warfare only |
 
-The surface is small on purpose. An earlier version also let the model set camp/sprint/follow percentages and park bots at fixed spots; the result was bots standing around. The model has no information that beats Bot Warfare's tuning there, so those levers are gone. A mission sends a bot to a death site, holds about 15 seconds, then releases it back to stock play.
+The surface is small on purpose. There is no chat either: model-written banter without real context read as noise, so it was removed. An earlier version also let the model set camp/sprint/follow percentages and park bots at fixed spots; the result was bots standing around. The model has no information that beats Bot Warfare's tuning there, so those levers are gone. A mission sends a bot to a death site, holds about 15 seconds, then releases it back to stock play.
 
 ## Fair by construction
 

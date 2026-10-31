@@ -5,7 +5,7 @@ from __future__ import annotations
 import os
 from pathlib import Path
 
-from .orders import ChatLine, MatchOrder, Squad, encode
+from .orders import MatchOrder, Squad, encode
 from .rcon import Rcon
 
 
@@ -21,12 +21,12 @@ class OrderFile:
         """The sequence number of the last write."""
         return self._seq
 
-    def write(self, map_name: str, ttl_ms: int, squad: Squad, chat: list[ChatLine]) -> int:
+    def write(self, map_name: str, ttl_ms: int, squad: Squad) -> int:
         """Writes a new order file with the next sequence number and returns it."""
         self._seq += 1
         self.path.parent.mkdir(parents=True, exist_ok=True)
         temporary = self.path.with_name(self.path.name + ".tmp")
-        temporary.write_text(encode(self._seq, map_name, ttl_ms, squad, chat), encoding="utf-8")
+        temporary.write_text(encode(self._seq, map_name, ttl_ms, squad), encoding="utf-8")
         os.replace(temporary, self.path)
         return self._seq
 

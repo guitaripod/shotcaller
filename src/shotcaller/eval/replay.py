@@ -23,7 +23,7 @@ def replay(director: Director, path: Path, policy: FairnessPolicy, limits: Limit
         if entry.get("kind") != "decision" or not entry.get("view"):
             continue
         tier = Tier(entry["tier"])
-        proposal = director.decide(tier, entry["view"], entry.get("trigger"))
+        proposal = director.decide(tier, entry["view"])
         total += 1
         latencies.append(proposal.latency_ms)
         _hydrate(state, entry["view"])

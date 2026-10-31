@@ -54,11 +54,11 @@ def test_example_config_loads_and_fills_defaults(tmp_path):
 
     example = Path(__file__).resolve().parent.parent / "examples" / "shotcaller.toml"
     config = load(example)
-    assert config.llm.timeouts_s["squad"] == 25.0 and config.llm.max_tokens["chat"] == 200
-    assert config.limits.maps[0] == "mp_rust" and config.gating.thresholds["squad"] == 0.95
+    assert config.llm.timeouts_s["squad"] == 25.0 and config.llm.max_tokens["match"] == 400
+    assert config.limits.maps[0] == "mp_rust" and config.gating.thresholds["squad"] == 0.9
 
     partial = tmp_path / "partial.toml"
-    partial.write_text('[server]\ngame_dir = "/g"\n[llm.timeouts_s]\nsquad = 5.0\n[gating.thresholds]\nchat = 0.1\n')
+    partial.write_text('[server]\ngame_dir = "/g"\n[llm.timeouts_s]\nsquad = 5.0\n[gating.thresholds]\nmatch = 0.1\n')
     config = load(partial)
-    assert config.llm.timeouts_s == {"match": 30.0, "squad": 5.0, "chat": 8.0}
-    assert config.gating.thresholds == {"match": 0.9, "squad": 0.95, "chat": 0.1}
+    assert config.llm.timeouts_s == {"match": 30.0, "squad": 5.0}
+    assert config.gating.thresholds == {"match": 0.1, "squad": 0.9}

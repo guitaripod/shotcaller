@@ -8,11 +8,10 @@ from typing import Protocol
 
 
 class Tier(StrEnum):
-    """The three decision speeds, from slowest to fastest."""
+    """The two decision speeds, from slowest to fastest."""
 
     MATCH = "match"
     SQUAD = "squad"
-    CHAT = "chat"
 
 
 @dataclass(slots=True)
@@ -32,6 +31,6 @@ class Director(Protocol):
 
     name: str
 
-    def decide(self, tier: Tier, view: dict, trigger: dict | None = None) -> Proposal:
-        """Answers for one tier given the fair view and, for chat, the event that triggered it."""
+    def decide(self, tier: Tier, view: dict) -> Proposal:
+        """Answers for one tier given the fair view."""
         ...

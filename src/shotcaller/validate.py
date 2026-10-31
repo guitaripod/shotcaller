@@ -6,13 +6,11 @@ import json
 import re
 from dataclasses import dataclass, field
 
-from .orders import DEFAULT_RADIUS, RADIUS_RANGE, SKILL_RANGE, BotOrder, ChatLine, Goal, MatchOrder, Squad
+from .orders import DEFAULT_RADIUS, RADIUS_RANGE, SKILL_RANGE, BotOrder, Goal, MatchOrder, Squad
 from .state import Anchor, MatchState
 
 _THINK = re.compile(r"<think>.*?</think>", re.DOTALL)
 _FENCE = re.compile(r"```(?:json)?\s*(.*?)```", re.DOTALL)
-_COLOR = re.compile(r"\^[0-9:;]")
-_CONTROL = re.compile(r"[\x00-\x1f\x7f|]")
 
 
 @dataclass(frozen=True, slots=True)
@@ -23,8 +21,6 @@ class Limits:
     max_goal_bots: int = 2
     goal_seconds: int = 15
     max_bots: int = 17
-    chat_max_len: int = 80
-    chat_max_lines: int = 2
     maps: tuple[str, ...] = ()
 
 
@@ -93,29 +89,6 @@ def validate_match(proposal: dict, state: MatchState, limits: Limits) -> Validat
         issues.append(f"next_map dropped: {next_map!r}")
         next_map = None
     return Validated(MatchOrder(low, high, count, next_map), issues)
-
-
-def validate_chat(proposal: dict, state: MatchState, limits: Limits) -> Validated:
-    """Checks chat lines: only bots speak, text is plain, short and unique."""
-    issues: list[str] = []
-    bots = {p.slot for p in state.bots}
-    lines: list[ChatLine] = []
-    for raw in _list(proposal.get("lines"))[: limits.chat_max_lines]:
-        if not isinstance(raw, dict) or raw.get("slot") not in bots or raw.get("scope") not in ("all", "team"):
-            issues.append("chat line dropped: bad speaker or scope")
-            continue
-        text = clean_chat(str(raw.get("text", "")), limits.chat_max_len)
-        if not text or any(line.text == text for line in lines):
-            issues.append("chat line dropped: empty or duplicate")
-            continue
-        lines.append(ChatLine(raw["slot"], raw["scope"], text))
-    return Validated(lines, issues)
-
-
-def clean_chat(text: str, max_len: int) -> str:
-    """Strips color codes and wire-reserved characters and cuts to the length limit."""
-    text = _CONTROL.sub(" ", _COLOR.sub("", text))
-    return " ".join(text.split())[:max_len].strip()
 
 
 def _list(value: object) -> list:
