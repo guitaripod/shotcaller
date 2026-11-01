@@ -4,6 +4,7 @@ After=network-online.target
 
 [Service]
 Type=simple
+Environment=HOME=@BASE@/home
 ExecStart=@BASE@/run.sh
 ExecStopPost=-/usr/bin/env WINEPREFIX=@BASE@/prefix /usr/bin/wineserver -k
 Restart=on-failure
@@ -11,6 +12,25 @@ RestartSec=10
 Nice=5
 MemoryMax=3G
 TimeoutStopSec=20
+UMask=0077
+NoNewPrivileges=yes
+PrivateTmp=yes
+PrivateDevices=yes
+ProtectSystem=strict
+ProtectHome=tmpfs
+TemporaryFileSystem=/mnt /media /run/media /srv /run/user
+BindPaths=@BASE@
+ProtectKernelModules=yes
+ProtectKernelTunables=yes
+ProtectKernelLogs=yes
+ProtectControlGroups=yes
+ProtectClock=yes
+ProtectProc=invisible
+RestrictNamespaces=yes
+RestrictSUIDSGID=yes
+RestrictRealtime=yes
+LockPersonality=yes
+RestrictAddressFamilies=AF_INET AF_INET6 AF_UNIX
 
 [Install]
 WantedBy=default.target

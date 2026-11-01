@@ -98,3 +98,12 @@ def test_the_update_never_touches_the_servers_own_files():
     script = (OPS / "iw4x-server" / "update.sh").read_text()
     for kept in ("/userraw/server.cfg", "/userraw/secrets.cfg", "/userraw/scriptdata/", "/userraw/scripts/_customcallbacks.gsc", "/players/"):
         assert f"--exclude={kept}" in script
+
+
+def test_the_game_server_unit_is_sandboxed():
+    unit = (OPS / "systemd" / "iw4x-server.service.in").read_text()
+    for line in ("NoNewPrivileges=yes", "ProtectSystem=strict", "ProtectHome=tmpfs", "PrivateTmp=yes", "BindPaths=@BASE@", "RestrictNamespaces=yes"):
+        assert line in unit
+    hidden = next(l for l in unit.splitlines() if l.startswith("TemporaryFileSystem="))
+    assert "/run/user" in hidden and "/mnt" in hidden
+    assert "Environment=HOME=@BASE@/home" in unit

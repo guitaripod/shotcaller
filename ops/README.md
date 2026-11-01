@@ -23,6 +23,10 @@ Then follow the checklist in [docs/HOSTING.md](../docs/HOSTING.md#checklist-befo
 
 The installer writes a random rcon password into `userraw/secrets.cfg` (mode 600). It never prints it; read it from there.
 
+## Sandbox
+
+The game server unit hides your home, other disks and the session bus from the game process and makes everything but the server directory read-only. See [Is it safe for the machine?](../docs/HOSTING.md#is-it-safe-for-the-machine) for what that does and does not cover.
+
 ## Files the update keeps
 
 `update.sh` never overwrites `userraw/server.cfg`, `secrets.cfg`, `games_mp.log`, `scriptdata/`, `logs/`, `demos/`, `players/`, `steam_appid.txt`, and the shotcaller and IW4MAdmin scripts. Everything else follows the game install.

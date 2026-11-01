@@ -11,7 +11,7 @@ How to run the server for other people. The kit in [`ops/`](../ops) automates th
 | Model | local, nothing to set up | the sidecar runs on the VPS and `[llm] base_url` points to your GPU box over a tunnel (Tailscale or WireGuard); if the tunnel is down the static baseline takes over |
 | Cost | none | a small VPS, 1 vCPU and 1 GB is enough for the dedicated server under Wine |
 
-For a private group, a home host with `LAN_ONLY=1` or a port forward to friends is fine. For strangers, use a VPS: forwarding a port from home publishes your address, and a hang or a ban-evading cheater then lands on the machine you live on. Everything in `ops/` works the same on either.
+For a private group, a home host with `LAN_ONLY=1` or a port forward to friends is fine. For strangers, use a VPS: forwarding a port from home publishes your address, and a hang, a ban-evading cheater or an exploit then lands on the machine you live on (see [Is it safe for the machine?](#is-it-safe-for-the-machine)). Everything in `ops/` works the same on either.
 
 ## Ports
 
@@ -49,6 +49,17 @@ A client that has IW4x installed already has every map in the rotation: `ops/iw4
 For a custom map or mod the client downloads from the server's web server on the game port (`/map` for `.arena`, `.iwd` and `.ff` of the current user map, `/list` and `/file` for a mod's `.iwd` and `mod.ff`; files with `_svr_` in the name are never offered). To send those from a CDN instead, set `sv_wwwDownload 1` and `sv_wwwBaseUrl` to a plain `http://` host (the client rejects `https://` and does not follow redirects).
 
 `z_svr_bots.iwd` (Bot Warfare), the shotcaller scripts and IW4MAdmin's `_customcallbacks.gsc` are server-side only; clients never download them.
+
+## Is it safe for the machine?
+
+The server is closed-source game code (`iw4x.exe` on the Call of Duty engine) running under Wine, parsing packets from strangers, plus an embedded HTTP server on the TCP game port. Engines of this generation have a history of remote-code-execution bugs, and none of this has been audited. Assume a determined attacker could one day get code running as the server's user. Wine is not a sandbox: by default that user is you, with your home directory, your keys and every disk you have mounted.
+
+`iw4x-server.service` therefore runs in a systemd sandbox (verified from the unit's processes):
+
+- your home, `/mnt`, `/media`, `/srv` and `/run/user` (the session bus and agent sockets) are empty tmpfs; only the server directory is bound back in and writable;
+- the rest of the filesystem is read-only, `/tmp` and `/dev` are private, no new privileges, no kernel or clock tuning, no new namespaces, only IP and local sockets.
+
+What the sandbox does not do is stop the network: a compromised server could still talk to anything your machine can reach, which includes the services on `127.0.0.1` (the model server, `opencode`) and the rest of your LAN. If you host strangers from the desktop, the options in order of strength are a VPS, a VM or a dedicated user with firewall rules that keep that user off loopback and the LAN, and then the sandbox alone. The rest of the checklist matters too: forward only UDP, keep TCP 1624 and the rcon password to yourself, keep the IW4x install current (`update.sh`), and leave the IW4MAdmin web front on its loopback-only whitelist.
 
 ## Admin and anti-cheat
 
