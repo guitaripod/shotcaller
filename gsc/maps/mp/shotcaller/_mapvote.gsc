@@ -219,13 +219,44 @@ decide( list, counts )
 
 	level.sc_vote_winner = best;
 
-	if ( best < 0 )
+	if ( counts.size > 0 )
 	{
-		return;
+		emit( "vote", field( "winner", winnerId( list, best ) ) + field( "choices", joined( list ) ) + field( "counts", joined( counts ) ) );
 	}
 
-	setdvar( "sv_mapRotationCurrent", "gametype " + getdvar( "g_gametype" ) + " map " + list[ best ] );
-	emit( "vote", field( "winner", list[ best ] ) + field( "votes", bestCount ) );
+	if ( best >= 0 )
+	{
+		setdvar( "sv_mapRotationCurrent", "gametype " + getdvar( "g_gametype" ) + " map " + list[ best ] );
+	}
+}
+
+/// The winning map id, or an empty string when nobody voted and there is no recommendation.
+winnerId( list, best )
+{
+	if ( best < 0 )
+	{
+		return "";
+	}
+
+	return list[ best ];
+}
+
+/// Joins an array into one comma separated string.
+joined( list )
+{
+	out = "";
+
+	for ( i = 0; i < list.size; i++ )
+	{
+		if ( i > 0 )
+		{
+			out += ",";
+		}
+
+		out += list[ i ];
+	}
+
+	return out;
 }
 
 /// Runs the vote screen for one player: builds it, moves the cursor on Fire and Aim, locks a vote on Use, and tears it down.

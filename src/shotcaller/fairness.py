@@ -26,7 +26,9 @@ def legal_anchors(state: MatchState, policy: FairnessPolicy) -> dict[str, Anchor
     return {
         anchor.id: anchor
         for anchor in state.anchors.values()
-        if anchor.kind == "death" and policy.death_delay_ms <= state.now_ms - anchor.born_ms <= policy.death_max_age_ms
+        if anchor.kind == "death"
+        and state.now_ms - anchor.born_ms >= policy.death_delay_ms
+        and state.now_ms - (anchor.last_ms or anchor.born_ms) <= policy.death_max_age_ms
     }
 
 
@@ -43,7 +45,7 @@ def fair_view(state: MatchState, policy: FairnessPolicy, standing: dict | None =
         "humans": [_human(p) for p in state.humans],
         "bots": [_bot(p, state.side_of(p)) for p in sorted(state.bots, key=lambda p: p.slot)],
         "kill_feed": [_kill(k, state.now_ms) for k in list(state.feed)[-policy.feed_entries :]],
-        "death_sites": [_death_site(a, state.now_ms) for a in legal.values()],
+        "death_sites": [_death_site(a, state.now_ms) for a in sorted(legal.values(), key=lambda a: (-a.count, -(a.last_ms or a.born_ms)))],
     }
 
 
@@ -98,4 +100,4 @@ def _kill(kill, now_ms: int) -> dict:
 
 
 def _death_site(anchor: Anchor, now_ms: int) -> dict:
-    return {"id": anchor.id, "human_died_here_s_ago": (now_ms - anchor.born_ms) // 1000}
+    return {"id": anchor.id, "deaths_here": anchor.count, "last_death_s_ago": (now_ms - (anchor.last_ms or anchor.born_ms)) // 1000}

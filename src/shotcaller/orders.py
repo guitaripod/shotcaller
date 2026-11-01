@@ -45,16 +45,15 @@ class Squad:
 
 @dataclass(frozen=True, slots=True)
 class MatchOrder:
-    """Server-wide knobs applied over rcon: the bot skill window, head count and next map."""
+    """Server-wide knobs applied over rcon: the bot skill window and a recommended next map."""
 
     skill_min: int | None = None
     skill_max: int | None = None
-    bot_count: int | None = None
     next_map: str | None = None
 
     def is_empty(self) -> bool:
         """True when nothing is ordered."""
-        return self.skill_min is None and self.skill_max is None and self.bot_count is None and self.next_map is None
+        return self.skill_min is None and self.skill_max is None and self.next_map is None
 
 
 def encode(seq: int, map_name: str, ttl_ms: int, squad: Squad) -> str:

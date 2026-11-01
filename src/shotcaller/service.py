@@ -69,6 +69,7 @@ class Service:
         self._flights: dict[Tier, _Flight] = {}
         self._schedule = _Schedule()
         self._squad_ok_at = float("-inf")
+        self._holding = False
 
     def run(self) -> None:
         """Steps until interrupted, then releases the bots back to stock behavior."""
@@ -98,6 +99,8 @@ class Service:
         self.state.apply(event)
         if event.type == "hello":
             self._on_new_map(now)
+        elif event.type == "vote":
+            self.journal.record("vote", winner=event.get_str("winner"), choices=event.get_str("choices").split(","), counts=event.get_str("counts").split(","))
         elif event.type == "end":
             self.journal.record("outcome", map=self.state.map, scores=self.state.scores, human_kd=self.state.human_kd())
 
@@ -115,7 +118,7 @@ class Service:
             proposal = _result(flight.future)
             resolved = resolve(tier, proposal, self.state, self.config.fairness, self.config.limits)
             self._journal_decision(tier, flight, proposal, resolved, now)
-            if resolved.valid:
+            if resolved.valid and not self._holding:
                 self._adopt(tier, resolved, now)
                 if tier is Tier.SQUAD:
                     self._squad_ok_at = now
@@ -157,12 +160,24 @@ class Service:
         state, cadence = self.state, self.config.cadence
         if state.ended or not state.humans:
             return
+        if self._hold(now):
+            return
         if self._due(Tier.SQUAD, now, cadence.squad_s) and state.bots:
             self._submit(Tier.SQUAD, now)
         if self._schedule.match_due or self._due(Tier.MATCH, now, cadence.match_s):
             if state.bots and self.enabled[Tier.MATCH]:
                 self._submit(Tier.MATCH, now)
             self._schedule.match_due = False
+
+    def _hold(self, now: float) -> bool:
+        """With humans on both teams there is no side to balance for, so the bots are left to Bot Warfare."""
+        holding = len(self.state.human_teams()) > 1
+        if holding and not self._holding:
+            log.info("humans on both teams: holding, bots return to stock behavior")
+            self.squad = Squad()
+            self._write(now)
+        self._holding = holding
+        return holding
 
     def _due(self, tier: Tier, now: float, interval_s: float) -> bool:
         return tier not in self._flights and now - self._schedule.last.get(tier, -interval_s) >= interval_s
@@ -201,5 +216,5 @@ def _plain(value: object) -> object:
     if isinstance(value, Squad):
         return squad_to_dict(value)
     if isinstance(value, MatchOrder):
-        return {"skill_min": value.skill_min, "skill_max": value.skill_max, "bot_count": value.bot_count, "next_map": value.next_map}
+        return {"skill_min": value.skill_min, "skill_max": value.skill_max, "next_map": value.next_map}
     return None

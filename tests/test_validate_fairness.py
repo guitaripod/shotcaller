@@ -74,9 +74,9 @@ def test_fair_view_never_contains_a_live_position(match_state):
 
 
 def test_match_order_clamps_and_checks_the_map(match_state):
-    result = validate_match({"skill_min": 0, "skill_max": 9, "bot_count": 50, "next_map": "mp_nowhere"}, match_state, LIMITS)
+    result = validate_match({"skill_min": 0, "skill_max": 9, "next_map": "mp_nowhere"}, match_state, LIMITS)
     order = result.value
-    assert (order.skill_min, order.skill_max, order.bot_count, order.next_map) == (1, 7, 11, None)
+    assert (order.skill_min, order.skill_max, order.next_map) == (1, 7, None)
     ok = validate_match({"next_map": "mp_terminal"}, match_state, LIMITS).value
     assert ok.next_map == "mp_terminal"
 

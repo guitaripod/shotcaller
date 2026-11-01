@@ -20,7 +20,6 @@ class Limits:
     max_skill_step: int = 2
     max_goal_bots: int = 2
     goal_seconds: int = 15
-    max_bots: int = 17
     maps: tuple[str, ...] = ()
 
 
@@ -73,7 +72,7 @@ def validate_squad(proposal: dict, state: MatchState, legal: dict[str, Anchor], 
 
 
 def validate_match(proposal: dict, state: MatchState, limits: Limits) -> Validated:
-    """Checks the skill window, bot head count and next map."""
+    """Checks the skill window and the recommended next map."""
     issues: list[str] = []
     low, high = _int(proposal.get("skill_min")), _int(proposal.get("skill_max"))
     low = _clamp(low, *SKILL_RANGE) if low is not None else None
@@ -81,14 +80,11 @@ def validate_match(proposal: dict, state: MatchState, limits: Limits) -> Validat
     if low is not None and high is not None and low > high:
         issues.append("skill window inverted; dropped")
         low = high = None
-    count = _int(proposal.get("bot_count"))
-    if count is not None:
-        count = _clamp(count, 0, min(limits.max_bots, max(0, state.slots - 1)))
     next_map = proposal.get("next_map")
     if next_map is not None and next_map not in limits.maps:
         issues.append(f"next_map dropped: {next_map!r}")
         next_map = None
-    return Validated(MatchOrder(low, high, count, next_map), issues)
+    return Validated(MatchOrder(low, high, next_map), issues)
 
 
 def _list(value: object) -> list:

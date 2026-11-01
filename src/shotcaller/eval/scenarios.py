@@ -24,7 +24,7 @@ class Scenario:
     repeats: bool = False
 
 
-def build_state(human_kills: int, human_deaths: int, axis_skill: int = 3, allies_skill: int = 3, deaths_at: list[str] | None = None) -> MatchState:
+def build_state(human_kills: int, human_deaths: int, axis_skill: int = 3, allies_skill: int = 3, deaths_at: list[tuple[str, int]] | None = None) -> MatchState:
     """A TDM state: one human on allies, four axis bots, three allied bots, optional human death anchors."""
     state = MatchState(map="mp_rust", gametype="war", slots=12, now_ms=300_000)
     state.scores.update(allies=human_kills * 100, axis=human_deaths * 100)
@@ -33,8 +33,8 @@ def build_state(human_kills: int, human_deaths: int, axis_skill: int = 3, allies
         state.players[slot] = Player(slot, f"axis{slot}", "axis", True, 2, 3, 200, True, axis_skill)
     for slot in range(5, 8):
         state.players[slot] = Player(slot, f"ally{slot}", "allies", True, 3, 2, 300, True, allies_skill)
-    for index, anchor_id in enumerate(deaths_at or []):
-        state.anchors[anchor_id] = Anchor(anchor_id, "death", 700 + index * 40, 250, 0, 250_000 + index * 5000)
+    for index, (anchor_id, count) in enumerate(deaths_at or []):
+        state.anchors[anchor_id] = Anchor(anchor_id, "death", 700 + index * 40, 250, 0, 200_000 + index * 5000, count, 270_000 + index * 5000)
     state.feed.append(Kill(290_000, 0, "player", False, "allies", 2, "axis2", True, "m4a1_mp", "MOD_RIFLE_BULLET"))
     return state
 
@@ -66,10 +66,15 @@ def _stays_calm(value: Any, state: MatchState) -> tuple[bool, str]:
 
 
 def _contests_deaths(value: Any, state: MatchState) -> tuple[bool, str]:
-    cluster = {a.id for a in state.anchors.values() if a.kind == "death"}
+    hottest = max((a for a in state.anchors.values() if a.kind == "death"), key=lambda a: a.count).id
     goals = [order.goal.anchor for order in value.bots if order.goal]
-    ok = bool(set(goals) & cluster) and len(set(goals)) > 1 and len(goals) <= 2
-    return ok, f"goals {goals} vs death sites {sorted(cluster)}"
+    ok = hottest in goals and len(set(goals)) == len(goals) <= 2
+    return ok, f"goals {goals}, hottest site {hottest}"
+
+
+def _sends_no_one(value: Any, state: MatchState) -> tuple[bool, str]:
+    goals = [order.goal.anchor for order in value.bots if order.goal]
+    return not goals, f"goals {goals}"
 
 
 def _raises_window(value: Any, _state: MatchState) -> tuple[bool, str]:
@@ -85,7 +90,8 @@ SCENARIOS: tuple[Scenario, ...] = (
     Scenario("human_dominating", Tier.SQUAD, lambda: build_state(18, 4), _raises_skill),
     Scenario("human_struggling", Tier.SQUAD, lambda: build_state(3, 14), _lowers_skill),
     Scenario("human_balanced", Tier.SQUAD, lambda: build_state(11, 10), _stays_calm),
-    Scenario("human_camps_one_spot", Tier.SQUAD, lambda: build_state(12, 6, deaths_at=["w50", "w51", "w52"]), _contests_deaths, repeats=True),
+    Scenario("human_camps_one_spot", Tier.SQUAD, lambda: build_state(12, 6, deaths_at=[("w50", 4), ("w51", 3), ("w52", 1)]), _contests_deaths, repeats=True),
+    Scenario("no_hot_site", Tier.SQUAD, lambda: build_state(11, 10, deaths_at=[("w60", 1)]), _sends_no_one),
     Scenario("match_too_easy", Tier.MATCH, lambda: build_state(24, 3), _raises_window),
     Scenario("match_steady", Tier.MATCH, lambda: build_state(10, 10), _clean_match),
 )

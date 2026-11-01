@@ -48,8 +48,6 @@ class MatchActuator:
             sent.append(f"set bots_skill_min {order.skill_min}")
         if order.skill_max is not None:
             sent.append(f"set bots_skill_max {order.skill_max}")
-        if order.bot_count is not None:
-            sent.append(f"set bots_manage_fill {order.bot_count}")
         if order.next_map is not None:
             sent.append(f"set sc_gm_pick {order.next_map}")
         for command in sent:

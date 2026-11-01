@@ -50,4 +50,4 @@ def _hydrate(state: MatchState, view: dict) -> None:
         b["slot"]: Player(b["slot"], f"bot{b['slot']}", b["team"], True, b["kills"], b["deaths"], 0, b["alive"], b["skill"])
         for b in view["bots"]
     }
-    state.anchors = {a["id"]: Anchor(a["id"], "death", 0, 0, 0, state.now_ms - a["human_died_here_s_ago"] * 1000) for a in view["death_sites"]}
+    state.anchors = {a["id"]: Anchor(a["id"], "death", 0, 0, 0, state.now_ms - a["last_death_s_ago"] * 1000, a["deaths_here"], state.now_ms - a["last_death_s_ago"] * 1000) for a in view["death_sites"]}

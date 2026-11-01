@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from .orders import RADIUS_RANGE, SKILL_RANGE
 
-VERSION = 3
+VERSION = 4
 
 _SKILL = {"type": "integer", "minimum": SKILL_RANGE[0], "maximum": SKILL_RANGE[1]}
 
@@ -45,7 +45,6 @@ MATCH = {
         "rationale": {"type": "string", "maxLength": 240},
         "skill_min": _SKILL,
         "skill_max": _SKILL,
-        "bot_count": {"type": "integer", "minimum": 0, "maximum": 17},
         "next_map": {"type": ["string", "null"], "maxLength": 32},
     },
     "required": ["rationale"],

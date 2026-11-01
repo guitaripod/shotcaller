@@ -35,6 +35,8 @@ class Anchor:
     y: int
     z: int
     born_ms: int
+    count: int = 1
+    last_ms: int = 0
 
 
 @dataclass(frozen=True, slots=True)
@@ -172,13 +174,16 @@ class MatchState:
     def _on_anchor(self, event: Event) -> None:
         anchor_id = event.get_str("id")
         if anchor_id:
+            earlier = self.anchors.get(anchor_id)
             self.anchors[anchor_id] = Anchor(
                 id=anchor_id,
                 kind=event.get_str("kind"),
                 x=event.get_int("x"),
                 y=event.get_int("y"),
                 z=event.get_int("z"),
-                born_ms=event.t,
+                born_ms=earlier.born_ms if earlier else event.t,
+                count=earlier.count + 1 if earlier else 1,
+                last_ms=event.t,
             )
 
     def _on_ack(self, event: Event) -> None:

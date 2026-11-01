@@ -2,8 +2,10 @@
 
 from __future__ import annotations
 
+import re
 import socket
 
+_PLAYER_LINE = re.compile(r"^\s*(\d+)\s+(-?\d+)\s+(-?\d+)\s+(\S+)\s+(.+?)\s+\d+\s+\S+\s+\d+\s+\d+\s*$")
 _OOB = b"\xff\xff\xff\xff"
 
 
@@ -38,3 +40,17 @@ class Rcon:
     def alive(self) -> bool:
         """Whether the server answers a status request."""
         return "map:" in self.send("status")
+
+    def human_count(self) -> int:
+        """How many human players are connected: every player line whose guid is not a bot's."""
+        return count_humans(self.send("status"))
+
+
+def count_humans(status: str) -> int:
+    """Counts the human lines of an rcon `status` reply; bots carry a `botN` guid."""
+    total = 0
+    for line in status.splitlines():
+        match = _PLAYER_LINE.match(line)
+        if match and not match.group(4).startswith("bot"):
+            total += 1
+    return total
