@@ -18,7 +18,6 @@ rotation = ["mp_rust", "mp_terminal", "mp_highrise", "mp_favela", "mp_afghan", "
 
 [limits]
 max_skill_step = 2
-max_bots = 11
 
 [fairness]
 death_delay_ms = 6000
@@ -29,13 +28,23 @@ squad_s = 15.0
 match_s = 120.0
 orders_ttl_s = 45.0
 
+[watchdog]
+unit = "iw4x-server"
+interval_s = 20.0
+failures = 3
+stale_s = 90.0
+grace_s = 120.0
+cooldown_s = 300.0
+
 [gating]
 reports_dir = "~/.local/share/shotcaller/reports"
 trust_unvalidated = false
 
 [gating.thresholds]
 match = 0.9
-squad = 0.9
+squad = 0.92
 
 [journal]
 path = "~/.local/share/shotcaller/journal.jsonl"
+max_mb = 64
+backups = 3

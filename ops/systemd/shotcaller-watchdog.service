@@ -1,0 +1,12 @@
+[Unit]
+Description=shotcaller watchdog: restart the game server when it stops answering
+After=network-online.target
+
+[Service]
+Type=simple
+ExecStart=%h/.local/bin/shotcaller watchdog
+Restart=always
+RestartSec=15
+
+[Install]
+WantedBy=default.target

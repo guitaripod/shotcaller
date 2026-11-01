@@ -1,0 +1,16 @@
+[Unit]
+Description=IW4x dedicated server (@UNIT@)
+After=network-online.target
+
+[Service]
+Type=simple
+ExecStart=@BASE@/run.sh
+ExecStopPost=-/usr/bin/env WINEPREFIX=@BASE@/prefix /usr/bin/wineserver -k
+Restart=on-failure
+RestartSec=10
+Nice=5
+MemoryMax=3G
+TimeoutStopSec=20
+
+[Install]
+WantedBy=default.target

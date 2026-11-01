@@ -10,6 +10,7 @@ from pathlib import Path
 from .director.llm import LlmConfig
 from .fairness import FairnessPolicy
 from .validate import Limits
+from .watchdog import WatchdogConfig
 
 _PASSWORD = re.compile(r'rcon_password\s+"([^"]+)"')
 
@@ -52,7 +53,7 @@ class Gating:
     """Minimum eval score a model needs before it may run a tier."""
 
     reports_dir: Path = Path("~/.local/share/shotcaller/reports")
-    thresholds: dict[str, float] = field(default_factory=lambda: {"match": 0.9, "squad": 0.9})
+    thresholds: dict[str, float] = field(default_factory=lambda: {"match": 0.9, "squad": 0.92})
     trust_unvalidated: bool = False
 
 
@@ -67,6 +68,9 @@ class Config:
     cadence: Cadence = field(default_factory=Cadence)
     gating: Gating = field(default_factory=Gating)
     journal_path: Path = Path("~/.local/share/shotcaller/journal.jsonl")
+    journal_max_mb: int = 64
+    journal_backups: int = 3
+    watchdog: WatchdogConfig = field(default_factory=WatchdogConfig)
 
 
 def load(path: Path) -> Config:
@@ -88,6 +92,9 @@ def load(path: Path) -> Config:
         cadence=_build(Cadence, raw.get("cadence", {})),
         gating=_gating(raw.get("gating", {})),
         journal_path=Path(raw.get("journal", {}).get("path", "~/.local/share/shotcaller/journal.jsonl")).expanduser(),
+        journal_max_mb=raw.get("journal", {}).get("max_mb", 64),
+        journal_backups=raw.get("journal", {}).get("backups", 3),
+        watchdog=_build(WatchdogConfig, raw.get("watchdog", {})),
     )
 
 

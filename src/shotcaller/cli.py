@@ -21,6 +21,7 @@ from .journal import Journal
 from .rcon import Rcon
 from .service import Service
 from .tail import EventTail
+from .watchdog import build as build_watchdog
 
 DEFAULT_CONFIG = Path("~/.config/shotcaller/shotcaller.toml").expanduser()
 
@@ -39,11 +40,13 @@ def main(argv: list[str] | None = None) -> int:
     replay_parser = commands.add_parser("replay", help="re-run a model on the states recorded in a journal")
     replay_parser.add_argument("journal", type=Path)
     replay_parser.add_argument("--model", help="override the configured model id")
+    commands.add_parser("players", help="print how many human players are connected")
+    commands.add_parser("watchdog", help="restart the game server unit when it stops answering")
     commands.add_parser("doctor", help="check the install, the game files and the connections")
     args = parser.parse_args(argv)
     logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
     config = load(args.config.expanduser())
-    return {"run": _run, "eval": _eval, "replay": _replay, "doctor": _doctor}[args.command](config, args)
+    return {"run": _run, "eval": _eval, "replay": _replay, "watchdog": _watchdog, "players": _players, "doctor": _doctor}[args.command](config, args)
 
 
 def _director(config: Config, model: str | None) -> LlmDirector:
@@ -62,7 +65,7 @@ def _run(config: Config, args: argparse.Namespace) -> int:
         EventTail(config.server.scriptdata / "events.log"),
         OrderFile(config.server.scriptdata / "orders.txt"),
         MatchActuator(rcon),
-        Journal(config.journal_path),
+        Journal(config.journal_path, config.journal_max_mb * 1024 * 1024, config.journal_backups),
     )
     signal.signal(signal.SIGTERM, _stop)
     try:
@@ -99,6 +102,22 @@ def _by_scenario(results: list[dict]) -> dict[str, list[bool]]:
 def _replay(config: Config, args: argparse.Namespace) -> int:
     summary = replay(_director(config, args.model), args.journal, config.fairness, config.limits)
     print(json.dumps(summary, indent=2))
+    return 0
+
+
+def _players(config: Config, args: argparse.Namespace) -> int:
+    server = config.server
+    print(Rcon(server.rcon_host, server.rcon_port, server.rcon_password()).human_count())
+    return 0
+
+
+def _watchdog(config: Config, args: argparse.Namespace) -> int:
+    server = config.server
+    rcon = Rcon(server.rcon_host, server.rcon_port, server.rcon_password())
+    try:
+        build_watchdog(config.watchdog, rcon, server.scriptdata / "events.log").run()
+    except KeyboardInterrupt:
+        return 0
     return 0
 
 

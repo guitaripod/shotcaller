@@ -11,7 +11,8 @@ The point of shotcaller is that a better model, behind the same config key, does
 | `human_dominating` | squad | opposing bots get at least one skill level tougher on average |
 | `human_struggling` | squad | opposing bots get at least one level easier |
 | `human_balanced` | squad | opposing bots move by at most one level (no thrashing) |
-| `human_camps_one_spot` | squad | one or two bots (not more) are sent to different places the human keeps dying, and re-asking with the first answer shown does not return identical orders |
+| `human_camps_one_spot` | squad | one or two bots (not more) are sent to different places the human keeps dying, hottest site included, and re-asking with the first answer shown does not return identical orders |
+| `no_hot_site` | squad | a single stray death is not a reason to send anyone: no missions |
 | `match_too_easy` | match | the skill window rises |
 | `match_steady` | match | the answer is accepted |
 
@@ -19,7 +20,7 @@ Per tier: `score = 0.3 * valid + 0.5 * passed + 0.2 * latency_ok`, where `valid`
 
 ## Gating
 
-At start the service reads the model's report. A tier runs on the model only if its score meets `[gating.thresholds]` (defaults: match 0.9, squad 0.9). The defaults sit above the static baseline's score on purpose: a model has to beat doing nothing clever before it is trusted with a tier. Otherwise squad uses the static baseline and match and chat stay off. A report written under an older `schema.VERSION` is ignored, so changing the shape of orders forces a re-eval. `trust_unvalidated = true` skips the check.
+At start the service reads the model's report. A tier runs on the model only if its score meets `[gating.thresholds]` (defaults: match 0.9, squad 0.92). The defaults sit above the static baseline's score on purpose: a model has to beat doing nothing clever before it is trusted with a tier. Otherwise squad uses the static baseline and match and chat stay off. A report written under an older `schema.VERSION` is ignored, so changing the shape of orders forces a re-eval. `trust_unvalidated = true` skips the check.
 
 Promote a model: edit `[llm] model`, `shotcaller eval`, `shotcaller doctor`, restart the service.
 
@@ -31,18 +32,18 @@ Each match end also journals an `outcome` entry (final scores and the human's K/
 
 ## Results
 
-Measured 2026-10-31 on a local llama-swap with `enable_thinking = false`. Replace these with your own numbers; they show the spread between weight classes, not a ranking.
+Measured 2026-11-01 on a local llama-swap with `enable_thinking = false`, second run of each so the model is already loaded. Replace these with your own numbers; they show the spread between weight classes, not a ranking.
 
 | Model | match | squad | squad p95 |
 | --- | --- | --- | --- |
-| Nemotron 3.5 Bolt 74B-A9B (Q4, local) | 1.00 | 0.92 | 3.6 s |
-| Qwen3 4B Instruct (Q4, local) | 0.92 | 0.88 | 1.2 s |
-| Nemotron 3.5 Bolt E4B (Q4, local) | 1.00 | 0.54 | 28.4 s |
-| static baseline (no model) | 0.75 | 0.88 | 0.0 s |
+| Nemotron 3.5 Bolt 74B-A9B abliterated (Q4, local) | 1.00 | 0.97 | 1.3 s |
+| Nemotron 3.5 Bolt E4B (Q4, local) | 1.00 | 0.86 | 5.7 s |
+| Qwen3 4B Instruct (Q4, local) | 0.83 | 0.87 | 0.5 s |
+| static baseline (no model) | 0.75 | 0.90 | 0.0 s |
 
-Each number is three runs per scenario. The weak spot for every model is `human_camps_one_spot` (Bolt 74B passes 1 of 3, Qwen3 4B 0 of 3): choosing two different death sites and then varying the orders when asked again is the hardest thing in the suite, and the clearest place a bigger model will show up later.
+Each number is three runs per scenario. `human_camps_one_spot` is still the hardest scenario (Bolt 74B and E4B pass 2 of 3, Qwen3 4B 0 of 3): choosing two different death sites and then varying the orders when asked again is what separates the weight classes. `no_hot_site` catches the opposite failure: the E4B model passes 1 of 3 because it sends bots to a single stray death. The static baseline now scores 0.90 on squad because it handles the skill scenarios and the quiet one, so the default squad threshold is 0.92: a model has to beat it, not tie it.
 
-The first request to a model includes llama-swap loading it, so run the eval twice for steady-state latency. The suite has six scenarios. It is a floor to clear, not a ranking; add scenarios as you find failures.
+The suite has seven scenarios. It is a floor to clear, not a ranking; add scenarios as you find failures.
 
 ## Thinking models
 

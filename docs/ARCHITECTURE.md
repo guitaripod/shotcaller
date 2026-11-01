@@ -56,7 +56,8 @@ Safety on the game side:
 | `director/` | `Director` protocol; `StaticDirector` baseline; `LlmDirector` for any OpenAI-compatible endpoint; prompts |
 | `service` | the loop: tail, track, schedule tiers, collect answers, write orders, journal |
 | `actuator`, `rcon` | atomic order file; server-wide knobs over rcon |
-| `journal` | append-only JSONL of every decision with the exact view |
+| `journal` | append-only JSONL of every decision with the exact view; rotates at `[journal] max_mb` and keeps `backups` files |
+| `watchdog` | `shotcaller watchdog`: restarts the game server unit after consecutive failed rcon checks or a stale `events.log` |
 | `eval/`, `gating` | scenario suite, per-tier scores, replay, and which tiers a model has earned |
 | `config`, `cli` | TOML config; `run`, `eval`, `replay`, `doctor` |
 
@@ -66,7 +67,7 @@ The service runs director calls on a small thread pool so a slow `squad` call ne
 
 | Tier | Trigger | Output | If the model fails |
 | --- | --- | --- | --- |
-| `match` | new map, then every `match_s` | skill window and bot count via rcon, and a next-map recommendation (`sc_gm_pick`) shown first in the map vote | nothing changes |
+| `match` | new map, then every `match_s` | skill window via rcon, and a next-map recommendation (`sc_gm_pick`) shown first in the map vote | nothing changes |
 | `squad` | every `squad_s` with a human playing | bot skill and missions in the order file | after one TTL without a valid answer the static baseline takes over |
 
 A tier whose model has no passing eval report does not run on the model at all (squad falls back to the static baseline; match stays silent) unless `trust_unvalidated` is set.

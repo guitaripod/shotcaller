@@ -1,0 +1,16 @@
+[Unit]
+Description=IW4MAdmin for the IW4x server
+After=network-online.target iw4x-server.service
+
+[Service]
+Type=simple
+WorkingDirectory=@IW4MADMIN@/app
+Environment=DOTNET_ROOT=@IW4MADMIN@/dotnet
+Environment=DOTNET_CLI_TELEMETRY_OPTOUT=1
+ExecStart=@IW4MADMIN@/dotnet/dotnet Lib/IW4MAdmin.dll
+Restart=always
+RestartSec=15
+Nice=10
+
+[Install]
+WantedBy=default.target

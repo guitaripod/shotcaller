@@ -67,6 +67,12 @@ def test_eval_scores_the_static_baseline_per_tier():
     assert not by_id["human_camps_one_spot"]["passed"]
 
 
+def test_default_gating_thresholds_sit_above_the_static_baseline():
+    report = run_eval(StaticDirector(), POLICY, LIMITS)
+    for tier, threshold in Gating().thresholds.items():
+        assert report["tiers"][tier]["score"] < threshold
+
+
 def test_eval_scores_an_oracle_model_at_the_top():
     def transport(url, headers, body, timeout_s):
         system = body["messages"][0]["content"]

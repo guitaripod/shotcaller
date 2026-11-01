@@ -20,7 +20,7 @@ The LLM never aims, moves or shoots. Bot Warfare keeps all of that, including ho
 
 | Tier | Cadence | Decides |
 | --- | --- | --- |
-| `match` | per map, then every ~2 min | bot skill window, bot count, next map |
+| `match` | per map, then every ~2 min | bot skill window, next map |
 | `squad` | every ~15 s | per-bot skill (opponents harder or easier to keep the match close), and at most two timed missions to where the human keeps dying |
 | everything else | never | aim, movement, firing, camping, sprinting, spawn behavior: Bot Warfare only |
 
@@ -29,6 +29,10 @@ The surface is small on purpose. There is no chat either: model-written banter w
 ## Overlays and map vote (no model needed)
 
 The GSC mod also draws kill banners (`DOUBLE KILL` to `RIP AND TEAR`, `HEADSHOT`, `GLORY KILL`, `PAYBACK`, `SHUTDOWN`, streaks up to `SLAYER OF HELL`), a streak widget with a pulsing red tint, match-flow calls (`FIGHT`, `MATCH POINT`, clock warnings and a countdown, lead changes), and a full-screen **map vote** at the end of every match with four maps from your rotation, live counts, a timer and the game master's recommendation. Everything is switchable and previewable (`rcon set sc_hud_preview all`). See [docs/OVERLAYS.md](docs/OVERLAYS.md).
+
+## Bots fill, humans keep their slots
+
+Bot Warfare's fill mode counts humans and bots toward one total (`bots_manage_fill`), so every human who joins pushes a bot out and a full room has no bots. The model does not decide how many bots there are. When humans are on both teams, the director holds still: nothing it could do for one side is fair to the other.
 
 ## Fair by construction
 
@@ -56,8 +60,12 @@ shotcaller doctor        # check files, rcon and the report
 shotcaller run           # run the director (see systemd/shotcaller.service)
 ```
 
-## Docs
+## Running it for other people
 
+`ops/` is a kit for an always-on server: installer, systemd units, update routine, watchdog and an IW4MAdmin setup with the server-side anti-cheat. [docs/HOSTING.md](docs/HOSTING.md) covers hosting at home or on a VPS, ports, bandwidth, IW4x version drift and what a fresh client downloads.
+
+## Docs
+- [Hosting and operations](docs/HOSTING.md)
 - [Overlays and the map vote](docs/OVERLAYS.md)
 - [Architecture](docs/ARCHITECTURE.md)
 - [Wire protocol](docs/PROTOCOL.md)

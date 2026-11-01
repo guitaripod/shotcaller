@@ -1,0 +1,6 @@
+[Unit]
+Description=Sync the IW4x server copy with the game install and restart it when it is empty
+
+[Service]
+Type=oneshot
+ExecStart=@BASE@/update.sh

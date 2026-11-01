@@ -18,5 +18,5 @@ Only death sites: the waypoint nearest where a human died, legal from `death_del
 
 ## Operator limits
 
-Whatever a model asks for is clamped by `[limits]`: skill moves at most `max_skill_step` (2) per decision, `max_goal_bots` (2) bots on a mission for `goal_seconds` (15), bot count is capped, the next map must be on your rotation list. Orders expire if the sidecar stops.
+Whatever a model asks for is clamped by `[limits]`: skill moves at most `max_skill_step` (2) per decision, `max_goal_bots` (2) bots on a mission for `goal_seconds` (15), the next map must be on your rotation list. Orders expire if the sidecar stops.
 
