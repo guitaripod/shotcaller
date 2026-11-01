@@ -119,3 +119,16 @@ def test_human_count_ignores_bots():
     assert count_humans(STATUS) == 2
     assert count_humans("map: mp_rust\n") == 0
     assert count_humans("") == 0
+
+
+def test_a_player_with_a_negative_qport_is_still_counted():
+    from shotcaller.rcon import count_humans
+
+    status = (
+        "map: mp_afghan\n"
+        "num score ping guid                             name            lastmsg address               qport rate\n"
+        "--- ----- ---- -------------------------------- --------------- ------- --------------------- ----- -----\n"
+        "  0   800  999                             bot0 ChunkyMonkey^7     272100 00000000.000000000000:0    1 99999\n"
+        " 12     0  102                 1a7f51a364dfd6c8 TestA^7               200 127.0.0.1:49994       -11514 99999\n"
+    )
+    assert count_humans(status) == 1

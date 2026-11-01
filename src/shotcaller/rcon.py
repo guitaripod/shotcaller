@@ -5,7 +5,7 @@ from __future__ import annotations
 import re
 import socket
 
-_PLAYER_LINE = re.compile(r"^\s*(\d+)\s+(-?\d+)\s+(-?\d+)\s+(\S+)\s+(.+?)\s+\d+\s+\S+\s+\d+\s+\d+\s*$")
+_PLAYER_LINE = re.compile(r"^\s*(\d+)\s+(-?\d+)\s+(-?\d+)\s+(\S+)\s+(.+?)\s+-?\d+\s+\S+\s+-?\d+\s+-?\d+\s*$")
 _OOB = b"\xff\xff\xff\xff"
 
 
