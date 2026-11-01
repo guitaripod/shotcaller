@@ -107,3 +107,23 @@ def test_the_game_server_unit_is_sandboxed():
     hidden = next(l for l in unit.splitlines() if l.startswith("TemporaryFileSystem="))
     assert "/run/user" in hidden and "/mnt" in hidden
     assert "Environment=HOME=@BASE@/home" in unit
+
+
+def test_bot_names_are_valid_and_untagged_by_default():
+    lines = [line.strip() for line in (OPS / "iw4x-server" / "bots.txt").read_text().splitlines() if line.strip()]
+    names = [line.split(",")[0] for line in lines]
+    tags = [line.split(",")[1] for line in lines if "," in line]
+    assert len(names) >= 60 and len({n.lower() for n in names}) == len(names)
+    assert all(1 <= len(n) <= 15 and not set(n) & set("^\\;\"") for n in names)
+    assert all(1 <= len(t) <= 4 for t in tags) and "BOT" not in tags
+    assert len(tags) < len(names) / 4
+
+
+def test_the_server_config_keeps_both_teams_full_and_leaves_room_to_join():
+    template = (OPS / "iw4x-server" / "server.cfg.template").read_text()
+    values = dict(re.findall(r'set (\w+) "([^"]*)"', template))
+    team = int(values["bots_team_amount"])
+    assert values["bots_team"] == "custom" and values["bots_team_mode"] == "0"
+    assert int(values["bots_manage_fill"]) == 2 * team and values["bots_manage_fill_mode"] == "0"
+    assert int(values["sv_maxclients"]) > int(values["bots_manage_fill"])
+    assert values["sv_randomBotNames"] == "1"

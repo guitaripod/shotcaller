@@ -61,6 +61,7 @@ write_config() {
   ROTATION="$("$OPS/iw4x-server/maps.sh" "$BASE/game")"
   POOL="$(pool_of "$ROTATION")"
   render "$OPS/iw4x-server/server.cfg.template" > "$BASE/game/userraw/server.cfg"
+  install -m 644 "$OPS/iw4x-server/bots.txt" "$BASE/game/userraw/bots.txt"
   if [ ! -f "$BASE/game/userraw/secrets.cfg" ]; then
     (umask 077; printf 'set rcon_password "%s"\n' "$(openssl rand -hex 16)" > "$BASE/game/userraw/secrets.cfg")
   fi

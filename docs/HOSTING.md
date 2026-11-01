@@ -21,11 +21,19 @@ For a private group, a home host with `LAN_ONLY=1` or a port forward to friends 
 
 `sv_lanOnly 1` keeps the server out of the public list. It is `LAN_ONLY=1` in `server.env`; flip to `0` and restart the unit to list the server.
 
-## Slots
+## Slots and teams
 
-`bots_manage_fill 10` with `bots_manage_fill_mode 0`, `bots_manage_fill_kick 1` and `bots_manage_fill_spec 0` makes humans and bots share one total of 10: each human who joins pushes a bot out, a full room has none, and spectators do not count. `sv_maxclients` is the hard cap (12 on the live server, 18 is the engine limit). `bots_skill` stays `0` so shotcaller owns per-bot skill. Verified with real clients joining a bot-filled room.
+The server fills both teams to six, counting humans: `bots_manage_fill 12`, `bots_manage_fill_mode 0`, `bots_manage_fill_kick 1` and `bots_manage_fill_spec 0` keep the total at 12, and `bots_team custom` with `bots_team_amount 6` and `bots_team_mode 0` keep the axis side at exactly six including humans, so the allies side is six too. A human who joins either team pushes one bot out, and Bot Warfare moves a bot across within about a second if the teams are off by one, so the enemy team is always full. Spectators do not count.
+
+`sv_maxclients` is 18 (the engine limit), not 12: a human needs a free slot to connect, and Bot Warfare only kicks a bot after the human has picked a team, so a server whose slots are all bots cannot be joined. For bigger teams raise `bots_manage_fill` to twice the team size and set `bots_team_amount` to the team size. `bots_skill` stays `0` so shotcaller owns per-bot skill.
 
 Bots are never added or removed by the model. When humans are on both teams the director holds still: any change it could make for one side is unfair to the other.
+
+## Bot names
+
+IW4x names bots from `userraw/bots.txt` (the installer copies `ops/iw4x-server/bots.txt`): one name per line, at most 15 characters, and an optional clan tag after a comma (`Rhino,LMC` shows as `[LMC]Rhino`). A line without a comma gets no tag; the `[BOT]` tag only appears when the file is empty and the names come from the master server. `sv_randomBotNames 1` shuffles the list at start. The name list is read once when the first bot is added, so changing it needs a server restart.
+
+What still gives a bot away: the scoreboard shows ping `-1` for bots (the engine reports it that way, and fixing it would mean patching `iw4x.dll`), and their guid is `botN` in `rcon status`.
 
 ## Bandwidth
 
