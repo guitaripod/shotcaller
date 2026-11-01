@@ -80,3 +80,12 @@ def test_gsc_calls_resolve_to_functions_that_exist(path):
     for number, line in enumerate(path.read_text().splitlines(), 1):
         for module, name in re.findall(r"(maps\\mp\\shotcaller\\[A-Za-z_]+)::([A-Za-z_][A-Za-z0-9_]*)", line):
             assert name in defined.get(module, set()), f"{path.name}:{number} calls {module}::{name}, which is not defined"
+
+
+def test_the_vote_screen_stays_within_the_hud_element_budget():
+    import re
+
+    source = (Path(__file__).resolve().parent.parent / "gsc" / "maps" / "mp" / "shotcaller" / "_votegrid.gsc").read_text()
+    created = len(re.findall(r"_hud::(?:shaderElem|textElem)\(", source))
+    in_column_loop = len(re.findall(r"for \( c = 0; c < g\.cols; c\+\+ \)", source))
+    assert created + 6 * in_column_loop <= 26

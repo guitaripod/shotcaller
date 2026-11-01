@@ -108,3 +108,24 @@ gametype( id )
 
 	return toUpper( id );
 }
+
+/// The name as it appears in the vote grid, where a column is narrow: the full name with "TROPICAL" cut short.
+shortLabel( map )
+{
+	switch ( map )
+	{
+		case "mp_estate_tropical": return "ESTATE TROP";
+		case "mp_fav_tropical": return "FAVELA TROP";
+		case "mp_crash_tropical": return "CRASH TROP";
+	}
+
+	return label( map );
+}
+
+/// Every known map id in display order, sorted by the name players see.
+order()
+{
+	ids = strtok( "mp_afghan,mp_convoy,mp_plaza2,mp_backlot,mp_bloc,mp_bloc_sh,mp_bog_sh,mp_broadcast,mp_carentan,mp_countdown,mp_crash_snow,mp_crash_tropical,mp_cross_fire,mp_derail,mp_citystreets,mp_dome,mp_farm,mp_estate,mp_estate_tropical,mp_favela,mp_fav_tropical,mp_firingrange,mp_hardhat,mp_highrise,mp_invasion,mp_checkpoint,mp_killhouse,mp_alpha,mp_bravo,mp_nuked,mp_pipeline,mp_quarry,mp_paris,mp_rundown,mp_rust,mp_rust_long,mp_boneyard,mp_seatown,mp_shipment,mp_shipment_long,mp_showdown,mp_nightshift,mp_storm_spring,mp_subbase,mp_terminal,mp_underground,mp_underpass,mp_village,mp_brecourt,mp_cargoship,mp_cargoship_sh", "," );
+
+	return ids;
+}

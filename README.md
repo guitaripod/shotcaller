@@ -28,7 +28,7 @@ The surface is small on purpose. There is no chat either: model-written banter w
 
 ## Overlays and map vote (no model needed)
 
-The GSC mod also draws kill banners (`DOUBLE KILL` to `RIP AND TEAR`, `HEADSHOT`, `GLORY KILL`, `PAYBACK`, `SHUTDOWN`, streaks up to `SLAYER OF HELL`), a streak widget with a pulsing red tint, match-flow calls (`FIGHT`, `MATCH POINT`, clock warnings and a countdown, lead changes), and a full-screen **map vote** at the end of every match with four maps from your rotation, live counts, a timer and the game master's recommendation. Everything is switchable and previewable (`rcon set sc_hud_preview all`). See [docs/OVERLAYS.md](docs/OVERLAYS.md).
+The GSC mod also draws kill banners (`DOUBLE KILL` to `RIP AND TEAR`, `HEADSHOT`, `GLORY KILL`, `PAYBACK`, `SHUTDOWN`, streaks up to `SLAYER OF HELL`), a streak widget with a pulsing red tint, match-flow calls (`FIGHT`, `MATCH POINT`, clock warnings and a countdown, lead changes), and a full-screen **map vote** at the end of every match: a grid of every map you run, a mouse cursor you click with, live counts, a timer and the game master's recommendation. Everything is switchable and previewable (`rcon set sc_hud_preview all`). See [docs/OVERLAYS.md](docs/OVERLAYS.md).
 
 ## Bots fill, humans keep their slots
 

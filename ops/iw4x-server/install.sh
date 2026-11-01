@@ -34,12 +34,12 @@ done
 render() {
   sed -e "s#@BASE@#$BASE#g" -e "s#@PORT@#$PORT#g" -e "s#@UNIT@#$UNIT#g" -e "s#@HOSTNAME@#$NAME#g" \
     -e "s#@MOTD@#Team Deathmatch against bots, humans welcome.#g" -e "s#@STEAM_GAME_DIR@#$STEAM_GAME_DIR#g" \
-    -e "s#@SHOTCALLER_CONFIG@#$SHOTCALLER_CONFIG#g" -e "s#@ROTATION@#$ROTATION#g" "$1"
+    -e "s#@SHOTCALLER_CONFIG@#$SHOTCALLER_CONFIG#g" -e "s#@ROTATION@#$ROTATION#g" -e "s#@POOL@#$POOL#g" "$1"
 }
 
 # Copies the game install without the player's own profile and files that belong to a client.
 copy_game() {
-  mkdir -p "$BASE/game"
+  mkdir -p "$BASE/game" "$BASE/home"
   rsync -a --exclude=/players/ --exclude=/steam_appid.txt --exclude=/zone-conversion.log \
     --exclude=/userraw/logs/ --exclude=/userraw/demos/ "$STEAM_GAME_DIR/" "$BASE/game/"
 }
@@ -51,9 +51,15 @@ make_prefix() {
   WINEPREFIX="$BASE/prefix" wineserver -w || true
 }
 
+# Prints the map ids of a rotation, space separated, which is the pool the map vote offers.
+pool_of() {
+  printf '%s\n' "$1" | grep -o 'map [a-z0-9_]*' | sed 's/^map //' | paste -sd' '
+}
+
 # Writes the config and a fresh random rcon password that is never printed.
 write_config() {
   ROTATION="$("$OPS/iw4x-server/maps.sh" "$BASE/game")"
+  POOL="$(pool_of "$ROTATION")"
   render "$OPS/iw4x-server/server.cfg.template" > "$BASE/game/userraw/server.cfg"
   if [ ! -f "$BASE/game/userraw/secrets.cfg" ]; then
     (umask 077; printf 'set rcon_password "%s"\n' "$(openssl rand -hex 16)" > "$BASE/game/userraw/secrets.cfg")
