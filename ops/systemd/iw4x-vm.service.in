@@ -1,0 +1,32 @@
+[Unit]
+Description=IW4x server virtual machine (isolated: restricted network, no access to the host)
+After=network-online.target
+
+[Service]
+Type=simple
+Environment=VM_DIR=@DIR@
+ExecStart=@REPO@/ops/vm/vm.sh run
+ExecStop=@REPO@/ops/vm/vm.sh stop
+Restart=on-failure
+RestartSec=15
+TimeoutStopSec=90
+Nice=5
+UMask=0077
+NoNewPrivileges=yes
+PrivateTmp=yes
+ProtectSystem=strict
+ProtectHome=tmpfs
+TemporaryFileSystem=@HIDDEN@
+BindPaths=@DIR@
+BindReadOnlyPaths=@REPO@
+ProtectKernelModules=yes
+ProtectKernelTunables=yes
+ProtectKernelLogs=yes
+ProtectControlGroups=yes
+ProtectClock=yes
+RestrictSUIDSGID=yes
+LockPersonality=yes
+RestrictAddressFamilies=AF_INET AF_INET6 AF_UNIX
+
+[Install]
+WantedBy=default.target

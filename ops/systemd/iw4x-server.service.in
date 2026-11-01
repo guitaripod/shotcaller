@@ -18,7 +18,7 @@ PrivateTmp=yes
 PrivateDevices=yes
 ProtectSystem=strict
 ProtectHome=tmpfs
-TemporaryFileSystem=/mnt /media /run/media /srv /run/user
+TemporaryFileSystem=@HIDDEN@
 BindPaths=@BASE@
 ProtectKernelModules=yes
 ProtectKernelTunables=yes
@@ -30,7 +30,7 @@ RestrictNamespaces=yes
 RestrictSUIDSGID=yes
 RestrictRealtime=yes
 LockPersonality=yes
-RestrictAddressFamilies=AF_INET AF_INET6 AF_UNIX
+RestrictAddressFamilies=AF_INET AF_INET6 AF_UNIX AF_NETLINK
 
 [Install]
 WantedBy=default.target

@@ -104,8 +104,10 @@ def test_the_game_server_unit_is_sandboxed():
     unit = (OPS / "systemd" / "iw4x-server.service.in").read_text()
     for line in ("NoNewPrivileges=yes", "ProtectSystem=strict", "ProtectHome=tmpfs", "PrivateTmp=yes", "BindPaths=@BASE@", "RestrictNamespaces=yes"):
         assert line in unit
-    hidden = next(l for l in unit.splitlines() if l.startswith("TemporaryFileSystem="))
-    assert "/run/user" in hidden and "/mnt" in hidden
+    assert "TemporaryFileSystem=@HIDDEN@" in unit
+    installer = (OPS / "iw4x-server" / "install.sh").read_text()
+    candidates = re.search(r"for d in ([^;]+);", installer).group(1).split()
+    assert {"/mnt", "/media", "/run/media", "/srv", "/run/user"} <= set(candidates)
     assert "Environment=HOME=@BASE@/home" in unit
 
 
@@ -127,3 +129,117 @@ def test_the_server_config_keeps_both_teams_full_and_leaves_room_to_join():
     assert int(values["bots_manage_fill"]) == 2 * team and values["bots_manage_fill_mode"] == "0"
     assert int(values["sv_maxclients"]) > int(values["bots_manage_fill"])
     assert values["sv_randomBotNames"] == "1"
+
+
+def vm_args(mode):
+    out = subprocess.run([str(OPS / "vm" / "vm.sh"), "args", mode], capture_output=True, text=True, env={"VM_DIR": "/vm", "PATH": "/usr/bin:/bin"})
+    assert out.returncode == 0, out.stderr
+    return out.stdout.splitlines()
+
+
+def netdev(lines):
+    return next(line for line in lines if line.startswith("user,"))
+
+
+def test_the_production_guest_is_cut_off_except_for_named_forwards():
+    net = netdev(vm_args("run"))
+    options = net.split(",")
+    assert "restrict=on" in options and "restrict=off" not in options
+    forwards = [o for o in options if o.startswith(("hostfwd=", "guestfwd="))]
+    assert sorted(forwards) == sorted([
+        "hostfwd=tcp:127.0.0.1:2222-:22",
+        "hostfwd=tcp:127.0.0.1:28962-:28962",
+        "hostfwd=tcp:127.0.0.1:1624-:1624",
+        "guestfwd=tcp:10.0.2.100:8081-cmd:socat - TCP:127.0.0.1:8081",
+    ])
+
+
+def test_qemu_exposes_nothing_beyond_host_loopback():
+    net = netdev(vm_args("run"))
+    exposed = [(proto, bind) for proto, bind in re.findall(r"hostfwd=(\w+):([^-]*)-", net) if not bind.startswith("127.0.0.1")]
+    assert exposed == []
+
+
+def test_the_open_network_is_only_for_provisioning_and_exposes_nothing():
+    net = netdev(vm_args("open"))
+    assert "restrict" not in net and "udp" not in net
+    assert re.findall(r"hostfwd=(\w+):([^-]*)-", net) == [("tcp", "127.0.0.1:2222")]
+
+
+def test_the_vm_unit_hides_the_host_from_qemu():
+    unit = (OPS / "systemd" / "iw4x-vm.service.in").read_text()
+    for line in ("NoNewPrivileges=yes", "ProtectHome=tmpfs", "ProtectSystem=strict", "BindPaths=@DIR@", "BindReadOnlyPaths=@REPO@"):
+        assert line in unit
+    assert "TemporaryFileSystem=@HIDDEN@" in unit
+
+
+def load_tunnel():
+    spec = importlib.util.spec_from_file_location("udp_tunnel", OPS / "vm" / "udp_tunnel.py")
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    return module
+
+
+def test_the_udp_tunnel_carries_datagrams_both_ways_and_keeps_senders_apart():
+    import asyncio
+    import socket
+
+    tunnel = load_tunnel()
+
+    class Echo(asyncio.DatagramProtocol):
+        def connection_made(self, transport):
+            self.transport = transport
+
+        def datagram_received(self, data, addr):
+            self.transport.sendto(b"echo:" + data + b":" + str(addr[1]).encode(), addr)
+
+    async def scenario():
+        loop = asyncio.get_running_loop()
+        probe = socket.socket(); probe.bind(("127.0.0.1", 0)); tunnel_port = probe.getsockname()[1]; probe.close()
+        echo_transport, _ = await loop.create_datagram_endpoint(Echo, local_addr=("127.0.0.1", 0))
+        game = echo_transport.get_extra_info("sockname")
+        server = await asyncio.start_server(tunnel.GuestSide(game).handle, "127.0.0.1", tunnel_port)
+        host = tunnel.HostSide(("127.0.0.1", tunnel_port))
+        host_transport, _ = await loop.create_datagram_endpoint(lambda: host, local_addr=("127.0.0.1", 0))
+        public = host_transport.get_extra_info("sockname")
+        task = asyncio.create_task(host.run_tunnel())
+        for _ in range(50):
+            if host.writer is not None:
+                break
+            await asyncio.sleep(0.05)
+
+        async def ask(payload):
+            client = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+            client.setblocking(False)
+            client.sendto(payload, public)
+            for _ in range(100):
+                try:
+                    return (await loop.run_in_executor(None, lambda: client.recvfrom(4096)))[0]
+                except BlockingIOError:
+                    await asyncio.sleep(0.02)
+            raise AssertionError("no reply")
+
+        first, second = await asyncio.gather(ask(b"one"), ask(b"two"))
+        again = await ask(b"three")
+        task.cancel(); server.close(); echo_transport.close(); host_transport.close()
+        return first, second, again
+
+    first, second, again = asyncio.run(scenario())
+    assert first.startswith(b"echo:one:") and second.startswith(b"echo:two:") and again.startswith(b"echo:three:")
+    assert first.rsplit(b":", 1)[1] != second.rsplit(b":", 1)[1]
+
+
+def test_the_host_side_never_sends_to_an_address_it_has_not_heard_from():
+    tunnel = load_tunnel()
+    side = tunnel.HostSide(("127.0.0.1", 1))
+    sent = []
+
+    class Spy:
+        def sendto(self, payload, addr):
+            sent.append((payload, addr))
+
+    side.transport = Spy()
+    side.reply(999, b"forged")
+    side.datagram_received(b"hello", ("203.0.113.9", 4000))
+    side.reply(1, b"ok")
+    assert sent == [(b"ok", ("203.0.113.9", 4000))]

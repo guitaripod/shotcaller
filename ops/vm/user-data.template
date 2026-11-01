@@ -1,0 +1,46 @@
+#cloud-config
+hostname: iw4x
+manage_etc_hosts: true
+ssh_pwauth: false
+disable_root: true
+users:
+  - name: iw4x
+    gecos: IW4x server
+    shell: /bin/bash
+    lock_passwd: true
+    sudo: ALL=(ALL) NOPASSWD:ALL
+    ssh_authorized_keys:
+      - @PUBKEY@
+bootcmd:
+  - [sh, -c, "dpkg --add-architecture i386"]
+package_update: true
+packages:
+  - wine
+  - wine64
+  - libwine
+  - wine32:i386
+  - libwine:i386
+  - xvfb
+  - xauth
+  - rsync
+  - socat
+  - python3
+  - python3-venv
+  - ca-certificates
+  - curl
+  - unzip
+  - libicu76
+  - libssl3t64
+  - libgssapi-krb5-2
+  - tzdata
+write_files:
+  - path: /etc/ssh/sshd_config.d/10-iw4x.conf
+    content: |
+      PasswordAuthentication no
+      KbdInteractiveAuthentication no
+      PermitRootLogin no
+      AllowUsers iw4x
+      X11Forwarding no
+      AllowAgentForwarding no
+runcmd:
+  - [loginctl, enable-linger, iw4x]

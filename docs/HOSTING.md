@@ -75,6 +75,39 @@ The server is closed-source game code (`iw4x.exe` on the Call of Duty engine) ru
 
 What the sandbox does not do is stop the network: a compromised server could still talk to anything your machine can reach, which includes the services on `127.0.0.1` (the model server, `opencode`) and the rest of your LAN. If you host strangers from the desktop, the options in order of strength are a VPS, a VM or a dedicated user with firewall rules that keep that user off loopback and the LAN, and then the sandbox alone. The rest of the checklist matters too: forward only UDP, keep TCP 1624 and the rcon password to yourself, keep the IW4x install current (`update.sh`), and leave the IW4MAdmin web front on its loopback-only whitelist.
 
+## Running it in a VM
+
+`ops/vm/` runs the whole stack (game server, shotcaller, IW4MAdmin) in a Debian 13 QEMU/KVM guest with no root and no libvirt. The guest's network is `-netdev user,restrict=on`: it cannot reach the host, your LAN, the tailnet or the internet, and DNS fails at once. The only holes are named in `vm.sh` and pinned by tests, and QEMU itself listens on host loopback only:
+
+- ssh (2222), the IW4MAdmin page (1624) and a tunnel port (28962) in;
+- one path out, to the model server on host port 8081, through a `socat` per connection that QEMU starts, so the sidecar in the guest can ask the model for decisions.
+
+`restrict=on` drops UDP replies to forwarded ports, so the game's UDP crosses the boundary in a tunnel: `iw4x-relay.service` on the host listens on the public UDP port and `iw4x-guest-relay` in the guest talks to the server, with datagrams framed over the one TCP forward (`ops/vm/udp_tunnel.py`, tested end to end). The host side only ever replies to addresses it has heard from, so a compromised guest cannot make it send packets anywhere else. Both QEMU and the relay run under a systemd sandbox that hides your home, other disks and `/run/user`.
+
+A compromised game server therefore gets a Debian user with a Wine prefix and nothing to talk to, and getting further means escaping KVM and then the sandbox around QEMU.
+
+```sh
+export VM_DIR=/mnt/nvme8tb/iw4x-vm
+ops/vm/vm.sh provision /mnt/nvme8tb/iw4x-server        # one time: image, packages, files, installer (about 10 minutes)
+ops/vm/vm.sh unit vm > ~/.config/systemd/user/iw4x-vm.service
+ops/vm/vm.sh unit relay > ~/.config/systemd/user/iw4x-relay.service
+systemctl --user daemon-reload && systemctl --user enable --now iw4x-vm iw4x-relay
+ops/vm/vm.sh env >> /mnt/nvme8tb/iw4x-server/server.env # update.sh then syncs the Steam install into the guest over ssh
+ops/vm/vm.sh ssh                                        # a shell in the guest
+ops/vm/vm.sh refresh                                    # push new shotcaller or ops code into the guest
+```
+
+To go back to running on the host, stop `iw4x-vm` and `iw4x-relay`, then enable `iw4x-server`, `shotcaller`, `shotcaller-watchdog` and `iw4madmin` again; the host copy of the server stays where it was.
+
+What this mode cannot do, because it is the price of the isolation:
+
+- **It is not listed publicly.** With no outbound network the server cannot reach the IW4x nodes, so it stays LAN-only (`LAN_ONLY=1`), which is right for playing locally and for friends who can reach your LAN.
+- **Every player shows as `127.0.0.1` in the guest**, on a port that identifies them. Bans by IP do not work (bans by IW4x GUID in IW4MAdmin still do) and the engine's per-address limits see one address.
+- **Updates come from the host.** The guest cannot download anything, so `update.sh` pushes the IW4x files from the Steam install into the guest and restarts the server there, still only when no one is playing.
+- **A little more latency**, about a millisecond for the tunnel.
+
+A public server needs the other design: a tap interface on a private bridge with `nftables` rules on the host (guest to internet and the model port only, nothing to the LAN, the host or the tailnet), which keeps source addresses and lets the server reach the master. That needs root once, so it is not built; a VPS gives the same isolation more simply.
+
 ## Admin and anti-cheat
 
 `ops/iw4madmin/install.sh <dir> <game dir> <port> [--allow <address>]` installs a pinned, checksum-verified IW4MAdmin release with its own .NET runtime (nothing system-wide changes), answers the first-run wizard, and patches what the wizard cannot ask: web front on and whitelisted, bots ignored, the server's `games_mp.log` as its log, and the stats plugin's server-side anti-cheat on. It installs `iw4madmin.service` and copies `_customcallbacks.gsc` into the server's `userraw/scripts`, which is what feeds hit and kill data to the anti-cheat. The server needs `g_log` and `g_logSync 1` (the server template sets both).

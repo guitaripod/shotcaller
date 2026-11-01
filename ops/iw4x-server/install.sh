@@ -5,7 +5,7 @@ OPS="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 REPO="$(cd "$OPS/.." && pwd)"
 
 usage() {
-  echo "usage: install.sh <server base dir> <iw4x game dir> [--port 28961] [--name hostname] [--unit iw4x-server] [--config shotcaller.toml]" >&2
+  echo "usage: install.sh <server base dir> <iw4x game dir> [--port 28961] [--name hostname] [--unit iw4x-server] [--config shotcaller.toml] [--existing]" >&2
   exit 2
 }
 
@@ -17,12 +17,14 @@ PORT=28961
 NAME="^2TDM ^7Bots and friends"
 UNIT=iw4x-server
 SHOTCALLER_CONFIG="$HOME/.config/shotcaller/shotcaller.toml"
+EXISTING=0
 while [ $# -gt 0 ]; do
   case "$1" in
     --port) PORT="$2"; shift 2 ;;
     --name) NAME="$2"; shift 2 ;;
     --unit) UNIT="$2"; shift 2 ;;
     --config) SHOTCALLER_CONFIG="$2"; shift 2 ;;
+    --existing) EXISTING=1; shift ;;
     *) usage ;;
   esac
 done
@@ -30,11 +32,20 @@ done
 [ -f "$STEAM_GAME_DIR/iw4x.exe" ] || { echo "no iw4x.exe in $STEAM_GAME_DIR" >&2; exit 1; }
 [ -f "$STEAM_GAME_DIR/userraw/z_svr_bots.iwd" ] || { echo "Bot Warfare (userraw/z_svr_bots.iwd) is missing from $STEAM_GAME_DIR" >&2; exit 1; }
 
+# Prints the directories the unit hides from the game process, leaving out any this machine does not have (a missing one fails the unit).
+hidden_dirs() {
+  local d
+  for d in /mnt /media /run/media /srv /run/user; do
+    [ -d "$d" ] && printf '%s ' "$d"
+  done
+}
+HIDDEN="$(hidden_dirs)"
+
 # Fills a template, replacing every @NAME@ with the matching shell variable.
 render() {
   sed -e "s#@BASE@#$BASE#g" -e "s#@PORT@#$PORT#g" -e "s#@UNIT@#$UNIT#g" -e "s#@HOSTNAME@#$NAME#g" \
     -e "s#@MOTD@#Team Deathmatch against bots, humans welcome.#g" -e "s#@STEAM_GAME_DIR@#$STEAM_GAME_DIR#g" \
-    -e "s#@SHOTCALLER_CONFIG@#$SHOTCALLER_CONFIG#g" -e "s#@ROTATION@#$ROTATION#g" -e "s#@POOL@#$POOL#g" "$1"
+    -e "s#@SHOTCALLER_CONFIG@#$SHOTCALLER_CONFIG#g" -e "s#@ROTATION@#$ROTATION#g" -e "s#@POOL@#$POOL#g" -e "s#@HIDDEN@#${HIDDEN% }#g" "$1"
 }
 
 # Copies the game install without the player's own profile and files that belong to a client.
@@ -56,11 +67,11 @@ pool_of() {
   printf '%s\n' "$1" | grep -o 'map [a-z0-9_]*' | sed 's/^map //' | paste -sd' '
 }
 
-# Writes the config and a fresh random rcon password that is never printed.
+# Writes the config and a fresh random rcon password that is never printed; with --existing a server.cfg already in place is kept.
 write_config() {
   ROTATION="$("$OPS/iw4x-server/maps.sh" "$BASE/game")"
   POOL="$(pool_of "$ROTATION")"
-  render "$OPS/iw4x-server/server.cfg.template" > "$BASE/game/userraw/server.cfg"
+  [ "$EXISTING" = 1 ] && [ -f "$BASE/game/userraw/server.cfg" ] || render "$OPS/iw4x-server/server.cfg.template" > "$BASE/game/userraw/server.cfg"
   install -m 644 "$OPS/iw4x-server/bots.txt" "$BASE/game/userraw/bots.txt"
   if [ ! -f "$BASE/game/userraw/secrets.cfg" ]; then
     (umask 077; printf 'set rcon_password "%s"\n' "$(openssl rand -hex 16)" > "$BASE/game/userraw/secrets.cfg")
@@ -79,7 +90,7 @@ install_units() {
 }
 
 mkdir -p "$BASE"
-copy_game
+[ "$EXISTING" = 1 ] || copy_game
 make_prefix
 "$REPO/scripts/install-gsc.sh" "$BASE/game"
 write_config

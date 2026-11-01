@@ -1,0 +1,16 @@
+[Unit]
+Description=IW4x UDP relay, guest side: tunnel frames in, datagrams to the game server
+
+[Service]
+Type=simple
+ExecStart=/usr/bin/python3 %h/shotcaller/ops/vm/udp_tunnel.py guest --listen 0.0.0.0:28962 --game 127.0.0.1:28961
+Restart=always
+RestartSec=3
+NoNewPrivileges=yes
+PrivateTmp=yes
+ProtectSystem=strict
+ProtectHome=read-only
+RestrictAddressFamilies=AF_INET AF_INET6 AF_UNIX
+
+[Install]
+WantedBy=default.target

@@ -8,6 +8,7 @@ ops/iw4x-server/run.sh       what the unit runs: xvfb-run + wine iw4x.exe -dedic
 ops/iw4x-server/update.sh    sync from the game install and restart, but only when the server is empty
 ops/iw4x-server/maps.sh      print a sv_mapRotation of every map the install ships
 ops/iw4madmin/install.sh     IW4MAdmin with the anti-cheat, pinned and checksum-verified
+ops/vm/vm.sh                 run everything in an isolated QEMU guest (see docs/HOSTING.md)
 ops/systemd/                 unit templates
 ```
 

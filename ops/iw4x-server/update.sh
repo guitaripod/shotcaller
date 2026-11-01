@@ -20,9 +20,36 @@ EXCLUDES=(
   --exclude=/userraw/maps/mp/shotcaller/
 )
 
+# Prints where the server copy lives: a directory, or user@host:path when REMOTE_SSH names the guest it runs in.
+target() {
+  if [ -n "${REMOTE_SSH:-}" ]; then
+    echo "$REMOTE_USER@127.0.0.1:${REMOTE_BASE:-server}/game/"
+  else
+    echo "$BASE/game/"
+  fi
+}
+
+# Runs rsync against the server copy, over ssh to the guest when there is one.
+sync_copy() {
+  if [ -n "${REMOTE_SSH:-}" ]; then
+    rsync -a -e "ssh $REMOTE_SSH" "$@" "${EXCLUDES[@]}" "$STEAM_GAME_DIR/" "$(target)"
+  else
+    rsync -a "$@" "${EXCLUDES[@]}" "$STEAM_GAME_DIR/" "$(target)"
+  fi
+}
+
+# Restarts the game server unit, inside the guest when there is one.
+restart_server() {
+  if [ -n "${REMOTE_SSH:-}" ]; then
+    ssh $REMOTE_SSH "$REMOTE_USER@127.0.0.1" "systemctl --user restart $UNIT"
+  else
+    systemctl --user restart "$UNIT"
+  fi
+}
+
 # Prints the files the Steam install has that the server copy lacks or has different, one per line.
 pending_changes() {
-  rsync -a --itemize-changes --dry-run "${EXCLUDES[@]}" "$STEAM_GAME_DIR/" "$BASE/game/" | grep -v '^\.d' || true
+  sync_copy --itemize-changes --dry-run | grep -v '^\.d' || true
 }
 
 # Prints how many humans are on the server, or a large number when it cannot be asked.
@@ -43,6 +70,6 @@ if [ "$humans" != "0" ] && [ "${FORCE:-0}" != "1" ]; then
   exit 0
 fi
 
-rsync -a "${EXCLUDES[@]}" "$STEAM_GAME_DIR/" "$BASE/game/"
-systemctl --user restart "$UNIT"
+sync_copy
+restart_server
 echo "updated and restarted $UNIT"
