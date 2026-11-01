@@ -15,8 +15,8 @@ For a private group, a home host with `LAN_ONLY=1` or a port forward to friends 
 
 ## Ports
 
-- **UDP `net_port`** (28961 in the examples): game traffic, rcon, the server list heartbeat. This is the only port players need.
-- **TCP `net_port`**: the IW4x client's built-in web server answers `/info`, `/list`, `/map` and `/file` here. Forward it only if you serve custom maps or a mod; otherwise leave it closed.
+- **UDP `net_port`** (28961 in the examples): game traffic, rcon, the server list. This is the only port the [official hosting guide](https://docs.iw4x.io/hosting/server-hosting/) opens (its default is 28960, inbound and outbound).
+- **TCP `net_port`**: the client's built-in web server answers `/info`, `/list`, `/map` and `/file` here. The official guide never opens it, one community wiki says to forward both, and IW4x's October security release fixed file access outside the game directories and download-password bypasses in that code. Leave it closed; open it only if the server does not appear in the list, or if you serve custom maps or a mod.
 - **TCP 1624**: the IW4MAdmin web front. Never forward it. It answers on every interface, so `setup.py` turns on its connection whitelist (loopback only). Reach it through an SSH or Tailscale tunnel and add that address with `--allow`.
 
 `sv_lanOnly 1` keeps the server out of the public list. It is `LAN_ONLY=1` in `server.env`; flip to `0` and restart the unit to list the server.
@@ -57,6 +57,12 @@ A client that has IW4x installed already has every map in the rotation: `ops/iw4
 For a custom map or mod the client downloads from the server's web server on the game port (`/map` for `.arena`, `.iwd` and `.ff` of the current user map, `/list` and `/file` for a mod's `.iwd` and `mod.ff`; files with `_svr_` in the name are never offered). To send those from a CDN instead, set `sv_wwwDownload 1` and `sv_wwwBaseUrl` to a plain `http://` host (the client rejects `https://` and does not follow redirects).
 
 `z_svr_bots.iwd` (Bot Warfare), the shotcaller scripts and IW4MAdmin's `_customcallbacks.gsc` are server-side only; clients never download them.
+
+## What IW4x supports
+
+IW4x is maintained by AlterWare. Its docs cover hosting on Windows and Linux (native `iw4x-launcher` plus `DedicatedServer.sh`), recommend a VPS for public servers (24/7, 5 to 10 Mbps up, about 500 MB RAM, 2 cores, no GPU) and IW4MAdmin for public servers, and call Wine or Proton setup out of scope; help is the IW4x Discord. Running `wine iw4x.exe -dedicated` after `iw4x-launcher --update` is the community pattern (the Pterodactyl egg does exactly that), and the community Docker images are mostly stale. A server shows in the in-game browser once `sv_hostname` is set and `sv_lanOnly` is 0; there is no registration, the decentralized node system accepts up to 15 servers per IP, and servers that break the hosting rules can be delisted (the rules are not in the docs; ask on Discord).
+
+Security history, which is why `update.sh` runs hourly: two client RCEs in 2023, another in the engine fixed in r4773 (December 2024, triggered by joining a malicious server), and release r5243 fixing, for players and dedicated servers, rcon password exposure and guessing, file access outside the game directories, download-password bypass, player impersonation and crashes or memory corruption from crafted input. Keep the server on the current release. Regular rcon sends its password in plaintext (`rconSafe` uses an RSA key instead), and IW4MAdmin needs regular rcon, so keep the rcon port off the internet path you do not control: the UDP port is shared with the game, so the password must stay long and random.
 
 ## Is it safe for the machine?
 
