@@ -114,7 +114,7 @@ housekeeping() {
   if [ "${size:-0}" -gt $((LOG_LIMIT_MB * 1024 * 1024)) ] && [ "$players" = 0 ]; then
     if [ "$MODE" = run ]; then
       say "rotating games_mp.log (${size} bytes, nobody playing)"
-      guest 'mv -f $HOME/server/game/userraw/games_mp.log $HOME/server/game/userraw/games_mp.log.1; systemctl --user restart iw4x-server' >/dev/null
+      guest 'rm -f $HOME/server/game/userraw/games_mp.log.1.gz; gzip -c $HOME/server/game/userraw/games_mp.log > $HOME/server/game/userraw/games_mp.log.1.gz; : > $HOME/server/game/userraw/games_mp.log; systemctl --user restart iw4x-server' >/dev/null
     else
       say "would rotate games_mp.log (${size} bytes)"
     fi
