@@ -125,9 +125,11 @@ def test_the_server_config_keeps_both_teams_full_and_leaves_room_to_join():
     template = (OPS / "iw4x-server" / "server.cfg.template").read_text()
     values = dict(re.findall(r'set (\w+) "([^"]*)"', template))
     team = int(values["bots_team_amount"])
+    fill = int(values["bots_manage_fill"])
+    slots = int(values["sv_maxclients"])
     assert values["bots_team"] == "custom" and values["bots_team_mode"] == "0"
-    assert int(values["bots_manage_fill"]) == 2 * team and values["bots_manage_fill_mode"] == "0"
-    assert int(values["sv_maxclients"]) > int(values["bots_manage_fill"])
+    assert fill == 2 * team and values["bots_manage_fill_mode"] == "0"
+    assert slots - fill == 2
     assert values["sv_randomBotNames"] == "1"
 
 
