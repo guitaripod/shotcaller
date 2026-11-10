@@ -55,7 +55,6 @@ spec( id )
 			break;
 		case "spree":
 			s.title = "KILLING SPREE";
-			s.sub = "3 KILLS WITHOUT DYING";
 			s.group = "streaks";
 			s.priority = 62;
 			s.weight = 1.1;
@@ -63,7 +62,6 @@ spec( id )
 			break;
 		case "rampage":
 			s.title = "RAMPAGE";
-			s.sub = "5 KILLS WITHOUT DYING";
 			s.group = "streaks";
 			s.priority = 72;
 			s.weight = 1.3;
@@ -73,7 +71,6 @@ spec( id )
 			break;
 		case "dominating":
 			s.title = "DOMINATING";
-			s.sub = "7 KILLS WITHOUT DYING";
 			s.group = "streaks";
 			s.priority = 78;
 			s.weight = 1.4;
@@ -84,7 +81,6 @@ spec( id )
 			break;
 		case "unstoppable":
 			s.title = "UNSTOPPABLE";
-			s.sub = "10 KILLS WITHOUT DYING";
 			s.group = "streaks";
 			s.priority = 85;
 			s.weight = 1.5;
@@ -97,7 +93,6 @@ spec( id )
 			break;
 		case "godlike":
 			s.title = "GODLIKE";
-			s.sub = "15 KILLS WITHOUT DYING";
 			s.group = "streaks";
 			s.priority = 90;
 			s.weight = 1.6;
@@ -112,7 +107,6 @@ spec( id )
 			break;
 		case "slayer":
 			s.title = "SLAYER OF HELL";
-			s.sub = "20 KILLS WITHOUT DYING";
 			s.group = "streaks";
 			s.priority = 98;
 			s.weight = 1.7;
@@ -136,7 +130,7 @@ spec( id )
 			break;
 		case "shutdown":
 			s.title = "SHUTDOWN";
-			s.sub = "ENEMY STREAK ENDED";
+			s.sub = "STREAK ENDED";
 			s.icon = "waypoint_kill";
 			s.priority = 80;
 			s.weight = 1.3;
@@ -156,7 +150,7 @@ spec( id )
 			break;
 		case "payback":
 			s.title = "PAYBACK";
-			s.sub = "YOU GOT THE ONE WHO GOT YOU";
+			s.sub = "REVENGE";
 			s.priority = 70;
 			s.weight = 1.2;
 			s.color = ( 0.85, 0.35, 1 );
@@ -195,7 +189,6 @@ spec( id )
 			break;
 		case "comeback":
 			s.title = "BACK FROM HELL";
-			s.sub = "KILLED AFTER A STRING OF DEATHS";
 			s.priority = 58;
 			s.weight = 1.1;
 			s.color = ( 0.5, 1, 0.5 );
@@ -229,7 +222,7 @@ spec( id )
 			s.flashColor = ( 1, 0.15, 0.02 );
 			break;
 		case "lead":
-			s.title = "YOU TAKE THE LEAD";
+			s.title = "TAKE THE LEAD";
 			s.group = "flow";
 			s.priority = 56;
 			s.weight = 1.1;
@@ -248,7 +241,7 @@ spec( id )
 			break;
 		case "matchpoint":
 			s.title = "MATCH POINT";
-			s.sub = "THE NEXT KILLS DECIDE IT";
+			s.sub = "FINAL STRETCH";
 			s.group = "flow";
 			s.priority = 86;
 			s.weight = 1.4;
@@ -260,7 +253,7 @@ spec( id )
 			s.flashColor = ( 1, 0.8, 0.2 );
 			break;
 		case "minute":
-			s.title = "ONE MINUTE REMAINING";
+			s.title = "1 MINUTE LEFT";
 			s.group = "flow";
 			s.priority = 84;
 			s.weight = 1.2;
@@ -268,7 +261,7 @@ spec( id )
 			s.accent = ( 1, 0.7, 0.1 );
 			break;
 		case "half":
-			s.title = "30 SECONDS REMAINING";
+			s.title = "30 SECONDS";
 			s.group = "flow";
 			s.priority = 84;
 			s.weight = 1.2;

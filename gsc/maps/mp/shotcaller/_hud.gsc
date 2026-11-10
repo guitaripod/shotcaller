@@ -1,6 +1,60 @@
 #include maps\mp\bots\_bot_utility;
 #include maps\mp\shotcaller\_log;
 
+/// How many kill cards stay in the column at once, newest at the bottom.
+cardCount()
+{
+	return 3;
+}
+
+/// The left edge of the column in the 640x480 HUD space, clear of the minimap and the crosshair.
+columnX()
+{
+	return 22;
+}
+
+/// The vertical gap between two stacked kill cards.
+cardPitch()
+{
+	return 40;
+}
+
+/// The y of the newest card, on the left of the screen clear of the minimap and the score.
+cardBaseY()
+{
+	return 84;
+}
+
+/// The y of a card at one age step, where 0 is the newest.
+cardY( age )
+{
+	return cardBaseY() - age * cardPitch();
+}
+
+/// The y of the streak chip, a little above the oldest card slot.
+chipY()
+{
+	return cardY( cardCount() ) - 6;
+}
+
+/// Shrinks a font so a string fits the card, given the width of one character in that font at scale 1.
+fitFont( base, chars, room, perChar )
+{
+	fitted = room / ( chars * perChar );
+
+	if ( fitted >= base )
+	{
+		return base;
+	}
+
+	if ( fitted < base * 0.74 )
+	{
+		return base * 0.74;
+	}
+
+	return fitted;
+}
+
 /// Precaches every shader the overlays and the vote screen draw; must run before the level's first wait.
 precache()
 {
@@ -137,28 +191,71 @@ ensure()
 	h = spawnstruct();
 	h.priority = 0;
 	h.lockUntil = 0;
-	h.flash = self shaderElem( "white", 640, 480, "fullscreen", "fullscreen", "left", "top", 0, 0, 5 );
-	h.glow = self shaderElem( "white", 640, 480, "fullscreen", "fullscreen", "left", "top", 0, 0, 4 );
-	h.strip = self shaderElem( "black", 40, 68, "fullscreen", "middle", "center", "middle", 320, -100, 20 );
-	h.lineTop = self shaderElem( "white", 40, 2, "fullscreen", "middle", "center", "middle", 320, -134, 21 );
-	h.lineBottom = self shaderElem( "white", 40, 2, "fullscreen", "middle", "center", "middle", 320, -66, 21 );
-	h.icon = self shaderElem( "white", 36, 36, "center", "middle", "center", "middle", -280, -100, 31 );
-	h.title = self textElem( "hudbig", 1.9, "center", "middle", "center", "middle", 0, -100, 30 );
-	h.sub = self textElem( "objective", 1.4, "center", "middle", "center", "middle", 0, -78, 30 );
-	h.streakLabel = self textElem( "objective", 1.15, "right", "middle", "right", "middle", -22, -36, 12 );
-	h.streakValue = self textElem( "hudbig", 2.4, "right", "middle", "right", "middle", -22, -8, 12 );
-	h.count = self textElem( "hudbig", 3.2, "center", "middle", "center", "middle", 0, -176, 22 );
-	h.streakLabel setText( "KILL STREAK" );
-	h.streakLabel.color = ( 1, 0.55, 0.15 );
-	h.streakValue.color = ( 1, 0.3, 0.06 );
-	h.streakValue.glowColor = ( 0.5, 0, 0 );
-	h.streakValue.glowAlpha = 1;
-	h.count.color = ( 1, 0.25, 0.08 );
+	h.elems = [];
+	h.cards = [];
+	self.sc_hud = h;
+	h.flash = self track( self shaderElem( "white", 640, 480, "fullscreen", "fullscreen", "left", "top", 0, 0, 5 ) );
+	h.glow = self track( self shaderElem( "white", 640, 480, "fullscreen", "fullscreen", "left", "top", 0, 0, 4 ) );
+
+	for ( i = 0; i < cardCount(); i++ )
+	{
+		h.cards[ i ] = self buildCard( i );
+	}
+
+	h.chip = self buildChip();
+	h.count = self track( self textElem( "bigfixed", 3.8, "center", "middle", "center", "middle", 0, -132, 24 ) );
+	h.count.color = ( 1, 0.42, 0.1 );
 	h.count.glowColor = ( 0.6, 0, 0 );
 	h.count.glowAlpha = 1;
+	h.countPlate = self track( self shaderElem( "black", 86, 70, "center", "middle", "center", "middle", 0, -132, 23 ) );
+	h.countLabel = self track( self textElem( "objective", 0.55, "center", "middle", "center", "middle", 0, -164, 24 ) );
+	h.countLabel setText( "SECONDS" );
+	h.countLabel.color = ( 0.9, 0.86, 0.78 );
 	self.sc_hud = h;
 
 	return h;
+}
+
+/// Keeps one element in the player's element list so clear() can free everything at once.
+track( e )
+{
+	h = self.sc_hud;
+	h.elems[ h.elems.size ] = e;
+
+	return e;
+}
+
+/// Makes one kill card: plate, accent bar, icon, title, subtitle and chain chip, all stacked on the column.
+buildCard( i )
+{
+	y = cardY( 0 );
+	x = columnX();
+	r = spawnstruct();
+	r.i = i;
+	r.age = 0;
+	r.live = false;
+	r.plate = self track( self shaderElem( "black", 1, 36, "left", "middle", "left", "middle", x, y, 30 + i ) );
+	r.bar = self track( self shaderElem( "white", 4, 36, "left", "middle", "left", "middle", x, y, 33 + i ) );
+	r.icon = self track( self shaderElem( "white", 18, 18, "left", "middle", "left", "middle", x + 14, y, 34 + i ) );
+	r.title = self track( self textElem( "hudbig", 1.1, "left", "middle", "left", "middle", x + 16, y - 7, 35 + i ) );
+	r.sub = self track( self textElem( "objective", 0.62, "left", "middle", "left", "middle", x + 16, y + 10, 35 + i ) );
+
+	return r;
+}
+
+/// Makes the persistent streak chip: a label, the count and a bar that fills toward the next milestone.
+buildChip()
+{
+	y = chipY();
+	x = columnX();
+	c = spawnstruct();
+	c.plate = self track( self shaderElem( "black", 122, 26, "left", "middle", "left", "middle", x, y, 26 ) );
+	c.label = self track( self textElem( "objective", 0.58, "left", "middle", "left", "middle", x + 12, y, 27 ) );
+	c.value = self track( self textElem( "bigfixed", 1.35, "left", "middle", "right", "middle", x + 110, y, 27 ) );
+	c.bar = self track( self shaderElem( "white", 110, 2, "left", "middle", "left", "middle", x + 6, y + 9, 28 ) );
+	c.label setText( "STREAK" );
+
+	return c;
 }
 
 /// Destroys every overlay element so the full screen is free, for example for the map vote.
@@ -172,18 +269,17 @@ clear()
 	self notify( "sc_banner" );
 	self notify( "sc_edge_off" );
 
+	for ( i = 0; i < cardCount(); i++ )
+	{
+		self notify( "sc_card" + i );
+	}
+
 	h = self.sc_hud;
-	h.flash destroy();
-	h.glow destroy();
-	h.strip destroy();
-	h.lineTop destroy();
-	h.lineBottom destroy();
-	h.icon destroy();
-	h.title destroy();
-	h.sub destroy();
-	h.streakLabel destroy();
-	h.streakValue destroy();
-	h.count destroy();
+
+	for ( i = 0; i < h.elems.size; i++ )
+	{
+		h.elems[ i ] destroy();
+	}
 
 	self.sc_hud = undefined;
 }
@@ -214,102 +310,262 @@ showBanner( spec, force )
 	h.priority = spec.priority;
 	h.lockUntil = gettime() + 900;
 
-	self notify( "sc_banner" );
-	self thread playBanner( spec );
+	self pushCard( spec );
+	self playBannerEffects( spec );
 }
 
-/// Animates one banner: the strip opens, the title slams in, the subtitle follows, then everything fades.
-playBanner( spec )
+/// Adds a card at the bottom of the column, slides the older ones up and drops the oldest.
+pushCard( spec )
+{
+	h = self ensure();
+	free = undefined;
+
+	for ( i = 0; i < cardCount(); i++ )
+	{
+		r = h.cards[ i ];
+
+		if ( !r.live )
+		{
+			if ( !isdefined( free ) )
+			{
+				free = r;
+			}
+
+			continue;
+		}
+
+		r.age = r.age + 1;
+
+		if ( r.age >= cardCount() )
+		{
+			self retireCard( r );
+			free = r;
+		}
+		else
+		{
+			self dimCard( r, r.age );
+		}
+	}
+
+	if ( !isdefined( free ) )
+	{
+		return;
+	}
+
+	self fillCard( free, spec );
+	free.age = 0;
+	free.live = true;
+	self notify( "sc_card" + free.i );
+	self thread animateCard( spec, free );
+}
+
+/// Writes a banner spec into a card's elements, sizes the card to its text and leaves it invisible for the animation.
+fillCard( r, spec )
+{
+	k = scale();
+	hasSub = spec.sub != "";
+	hasIcon = spec.icon != "";
+	left = 16;
+	textX = columnX() + left;
+
+	if ( hasIcon )
+	{
+		left = 38;
+		textX = columnX() + left;
+	}
+
+	ts = ( 1.3 + 0.28 * ( spec.weight - 1 ) ) * k;
+	ss = 0.66 * k;
+	room = spec.title.size * 13.2 * ts;
+
+	if ( hasSub && spec.sub.size * 8.4 * ss > room )
+	{
+		room = spec.sub.size * 8.4 * ss;
+	}
+
+	if ( room > 200 )
+	{
+		room = 200;
+	}
+
+	r.w = left + room + 22;
+
+	if ( r.w < 120 )
+	{
+		r.w = 120;
+	}
+
+	r.h = int( 34 + 10 * ( spec.weight - 1 ) );
+	up = int( r.h * 0.24 );
+	r.plate setShader( "black", 1, r.h );
+	r.plate.color = ( 0, 0, 0 );
+	r.plate.alpha = 0;
+	r.plate.x = columnX();
+	r.plate.y = cardY( 0 );
+	r.bar setShader( "white", 4, r.h + 20 );
+	r.bar.color = spec.accent;
+	r.bar.alpha = 0;
+	r.bar.x = columnX();
+	r.bar.y = cardY( 0 );
+	r.icon.x = columnX() + 14;
+	r.icon.y = cardY( 0 );
+	r.icon.alpha = 0;
+
+	if ( hasIcon )
+	{
+		r.icon setShader( spec.icon, 18, 18 );
+		r.icon.color = spec.color;
+	}
+
+	r.title.x = textX;
+	r.title.y = cardY( 0 ) - up;
+	r.title setText( spec.title );
+	r.title.color = ( 0.98, 0.96, 0.91 );
+
+	if ( spec.weight >= 1.35 )
+	{
+		r.title.color = spec.color;
+	}
+
+	r.title.glowColor = spec.glow;
+	r.title.glowAlpha = 0.55;
+	r.title.fontScale = fitFont( ts, spec.title.size, room, 13.2 );
+	r.title.alpha = 0;
+	r.titleY = 0 - up;
+
+	r.sub.x = textX;
+	r.sub.y = cardY( 0 ) + int( r.h * 0.26 );
+	r.sub.alpha = 0;
+	r.sub.color = ( 0.86, 0.81, 0.73 );
+
+	if ( hasSub )
+	{
+		r.sub setText( spec.sub );
+		r.sub.fontScale = fitFont( ss, spec.sub.size, room, 8.4 );
+	}
+
+	if ( !hasSub )
+	{
+		r.title.y = cardY( 0 );
+		r.titleY = 0;
+	}
+}
+
+/// Brings one card in: the plate wipes open, the accent bar slams down and the text lands a frame later.
+animateCard( spec, r )
 {
 	self endon( "disconnect" );
-	self endon( "sc_banner" );
+	self endon( "sc_card" + r.i );
 
-	h = self.sc_hud;
-	k = scale() * spec.weight;
+	k = scale();
+	w = r.w;
+	ts = r.title.fontScale;
 	hasSub = spec.sub != "";
-	titleY = -100;
 
-	if ( hasSub )
-	{
-		titleY = -112;
-	}
-
-	h.strip setShader( "black", 40, 68 );
-	h.strip.alpha = 0.62;
-	h.strip.color = ( 0.05, 0, 0 );
-	h.lineTop setShader( "white", 40, 2 );
-	h.lineTop.color = spec.accent;
-	h.lineTop.alpha = 0.95;
-	h.lineBottom setShader( "white", 40, 2 );
-	h.lineBottom.color = spec.accent;
-	h.lineBottom.alpha = 0.95;
-
-	h.title.y = titleY;
-	h.title.color = spec.color;
-	h.title.glowColor = spec.glow;
-	h.title.glowAlpha = 1;
-	h.title.fontScale = 4.4 * k * 0.6;
-	h.title.alpha = 0;
-	h.title setText( spec.title );
-
-	h.sub.alpha = 0;
-	h.sub.color = ( 0.95, 0.9, 0.85 );
-
-	if ( hasSub )
-	{
-		h.sub setText( spec.sub );
-	}
-
-	h.icon.alpha = 0;
-
-	if ( spec.icon != "" )
-	{
-		h.icon setShader( spec.icon, 40, 40 );
-		h.icon.color = spec.color;
-	}
+	r.plate.alpha = 0.72;
+	r.bar.alpha = 1;
 
 	wait 0.05;
 
-	h.strip scaleOverTime( 0.16, 640, 68 );
-	h.lineTop scaleOverTime( 0.16, 640, 2 );
-	h.lineBottom scaleOverTime( 0.16, 640, 2 );
-	h.title changeFontScaleOverTime( 0.12 );
-	h.title.fontScale = 2.5 * k * 0.6;
-	h.title fadeOverTime( 0.12 );
-	h.title.alpha = 1;
-
-	self playBannerEffects( spec );
+	r.plate scaleOverTime( 0.11, int( w ), r.h );
+	r.bar scaleOverTime( 0.13, int( 4 + 2 * ( spec.weight - 1 ) ), r.h + 8 );
+	r.title.fontScale = ts * 1.4;
+	r.title changeFontScaleOverTime( 0.12 );
+	r.title.fontScale = ts;
 
 	if ( spec.icon != "" )
 	{
-		h.icon fadeOverTime( 0.2 );
-		h.icon.alpha = 1;
+		r.icon fadeOverTime( 0.08 );
+		r.icon.alpha = 1;
 	}
+
+	r.title fadeOverTime( 0.06 );
+	r.title.alpha = 1;
+
+	wait 0.04;
 
 	if ( hasSub )
 	{
-		wait 0.1;
-		h.sub fadeOverTime( 0.25 );
-		h.sub.alpha = 0.95;
+		r.sub fadeOverTime( 0.1 );
+		r.sub.alpha = 1;
 	}
 
 	wait spec.hold;
 
-	h.strip fadeOverTime( 0.4 );
-	h.strip.alpha = 0;
-	h.lineTop fadeOverTime( 0.4 );
-	h.lineTop.alpha = 0;
-	h.lineBottom fadeOverTime( 0.4 );
-	h.lineBottom.alpha = 0;
-	h.title fadeOverTime( 0.4 );
-	h.title.alpha = 0;
-	h.sub fadeOverTime( 0.4 );
-	h.sub.alpha = 0;
-	h.icon fadeOverTime( 0.4 );
-	h.icon.alpha = 0;
+	r.plate fadeOverTime( 0.3 );
+	r.plate.alpha = 0;
+	r.bar fadeOverTime( 0.3 );
+	r.bar.alpha = 0;
+	r.icon fadeOverTime( 0.3 );
+	r.icon.alpha = 0;
+	r.title fadeOverTime( 0.3 );
+	r.title.alpha = 0;
+	r.sub fadeOverTime( 0.3 );
+	r.sub.alpha = 0;
+	wait 0.32;
+	r.live = false;
+}
 
-	wait 0.45;
-	h.priority = 0;
+/// Moves a card up one slot, dims it and lets it fade out on its own so the column reads as a short log.
+dimCard( r, age )
+{
+	self notify( "sc_card" + r.i );
+	self thread fadeCard( r, age );
+}
+
+/// Slides a card to its new slot, keeps a little of it on screen, then fades it away.
+fadeCard( r, age )
+{
+	self endon( "disconnect" );
+	self endon( "sc_card" + r.i );
+
+	y = cardY( age );
+	r.plate moveOverTime( 0.16 );
+	r.plate.y = y;
+	r.bar moveOverTime( 0.16 );
+	r.bar.y = y;
+	r.icon moveOverTime( 0.16 );
+	r.icon.y = y;
+	r.title moveOverTime( 0.16 );
+	r.title.y = y + r.titleY;
+	r.sub moveOverTime( 0.16 );
+	r.sub.y = y + 8;
+	r.plate fadeOverTime( 0.16 );
+	r.plate.alpha = 0.48;
+	r.bar fadeOverTime( 0.16 );
+	r.bar.alpha = 0.5;
+	r.icon fadeOverTime( 0.16 );
+	r.icon.alpha = 0.55;
+	r.title fadeOverTime( 0.16 );
+	r.title.alpha = 0.72;
+	r.sub fadeOverTime( 0.16 );
+	r.sub.alpha = 0.55;
+	wait 1.8;
+
+	r.plate fadeOverTime( 0.35 );
+	r.plate.alpha = 0;
+	r.bar fadeOverTime( 0.35 );
+	r.bar.alpha = 0;
+	r.icon fadeOverTime( 0.35 );
+	r.icon.alpha = 0;
+	r.title fadeOverTime( 0.35 );
+	r.title.alpha = 0;
+	r.sub fadeOverTime( 0.35 );
+	r.sub.alpha = 0;
+	wait 0.4;
+	r.live = false;
+}
+
+/// Hides a card at once when a fourth event needs its slot.
+retireCard( r )
+{
+	self notify( "sc_card" + r.i );
+	r.live = false;
+	r.plate.alpha = 0;
+	r.bar.alpha = 0;
+	r.icon.alpha = 0;
+	r.title.alpha = 0;
+	r.sub.alpha = 0;
 }
 
 /// The extras that go with a banner: screen flash, camera shake and a sound, each behind its own switch.
@@ -342,7 +598,64 @@ flash( color, alpha, seconds )
 	h.flash.alpha = 0;
 }
 
-/// Updates the kill streak widget, and starts or stops the red edge glow that marks a hot streak.
+/// The color the streak chip and its bar take at a given streak.
+streakColor( count )
+{
+	if ( count >= 15 )
+	{
+		return ( 1, 0.1, 0.02 );
+	}
+
+	if ( count >= 10 )
+	{
+		return ( 1, 0.24, 0.05 );
+	}
+
+	if ( count >= 5 )
+	{
+		return ( 1, 0.42, 0.08 );
+	}
+
+	return ( 1, 0.62, 0.15 );
+}
+
+/// The next streak milestone, which the chip bar fills toward.
+streakTarget( count )
+{
+	if ( count < 3 )
+	{
+		return 3;
+	}
+
+	if ( count < 5 )
+	{
+		return 5;
+	}
+
+	if ( count < 7 )
+	{
+		return 7;
+	}
+
+	if ( count < 10 )
+	{
+		return 10;
+	}
+
+	if ( count < 15 )
+	{
+		return 15;
+	}
+
+	if ( count < 20 )
+	{
+		return 20;
+	}
+
+	return 25;
+}
+
+/// Updates the streak chip, and starts or stops the red edge glow that marks a hot streak.
 streak( count )
 {
 	if ( !groupOn( "widgets" ) )
@@ -351,21 +664,31 @@ streak( count )
 	}
 
 	h = self ensure();
+	c = h.chip;
 
 	if ( count < 2 )
 	{
-		h.streakLabel.alpha = 0;
-		h.streakValue.alpha = 0;
+		c.plate.alpha = 0;
+		c.label.alpha = 0;
+		c.value.alpha = 0;
+		c.bar.alpha = 0;
 		self edgeOff();
 		return;
 	}
 
-	h.streakLabel.alpha = 0.9;
-	h.streakValue.alpha = 1;
-	h.streakValue setValue( count );
-	h.streakValue.fontScale = 3.4;
-	h.streakValue changeFontScaleOverTime( 0.2 );
-	h.streakValue.fontScale = 2.4;
+	color = self streakColor( count );
+	c.plate.alpha = 0.45;
+	c.label.alpha = 0.8;
+	c.value.alpha = 1;
+	c.value setValue( count );
+	c.value.color = color;
+	c.value.fontScale = 1.7;
+	c.value changeFontScaleOverTime( 0.18 );
+	c.value.fontScale = 1.35;
+	c.bar.color = color;
+	c.bar.alpha = 0.9;
+	target = self streakTarget( count );
+	c.bar scaleOverTime( 0.2, int( 110 * count / target ), 2 );
 
 	if ( count >= 5 && !isdefined( self.sc_edge ) )
 	{
@@ -406,7 +729,7 @@ edgeOff()
 	}
 }
 
-/// Shows one big countdown number for the last seconds of the match, or hides it when the number is zero.
+/// Shows one big countdown number low on the screen for the last seconds of the match, or hides it at zero.
 countdown( n )
 {
 	if ( !groupOn( "flow" ) )
@@ -419,14 +742,18 @@ countdown( n )
 	if ( n <= 0 )
 	{
 		h.count.alpha = 0;
+		h.countLabel.alpha = 0;
+		h.countPlate.alpha = 0;
 		return;
 	}
 
+	h.countPlate.alpha = 0.5;
 	h.count setValue( n );
 	h.count.alpha = 1;
-	h.count.fontScale = 4.4;
-	h.count changeFontScaleOverTime( 0.3 );
-	h.count.fontScale = 3.2;
+	h.count.fontScale = 4.6 * scale();
+	h.count changeFontScaleOverTime( 0.28 );
+	h.count.fontScale = 3.8 * scale();
+	h.countLabel.alpha = 0.8;
 }
 
 /// Watches the preview dvar and plays what it names on every human, so a style can be judged without playing for it.

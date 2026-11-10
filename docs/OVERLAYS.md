@@ -4,7 +4,7 @@ Both live entirely in the GSC mod. They need no sidecar and no model, work on a 
 
 ## Kill and streak banners
 
-A banner is a dark strip across the screen with two accent lines, a slammed-in title and an optional subtitle. The strongest event of a kill wins the title; the runner-up becomes the subtitle (`RIP AND TEAR` over `HEADSHOT`).
+A banner is a compact card in a column on the left of the screen, clear of the minimap, the score and the crosshair: a dark plate sized to its text, a bright accent bar in the tier's colour, an optional kill icon, a title and an optional subtitle. The strongest event of a kill wins the title; the runner-up becomes the subtitle (`RIP AND TEAR` over `HEADSHOT`). Cards stack three deep, newest at the bottom; older ones slide up, dim and fade.
 
 | Kind | Banners |
 | --- | --- |
@@ -13,7 +13,7 @@ A banner is a dark strip across the screen with two accent lines, a slammed-in t
 | Single kill | `FIRST BLOOD`, `SHUTDOWN` (ended an enemy streak of 5 or more), `GLORY KILL` (knife), `PAYBACK` (killed whoever killed you last), `LONG SHOT` (1800+ units), `HEADSHOT`, `BLOWN APART` (explosive), `POINT BLANK`, `BACK FROM HELL` (a kill after 4+ deaths in a row) |
 | Death | red screen flash, `STREAK LOST` after a streak of 3 or more |
 | Match flow | `FIGHT` with the map and mode, `YOU TAKE THE LEAD`, `LEAD LOST`, `MATCH POINT` at 85% of the score limit, `ONE MINUTE REMAINING`, `30 SECONDS REMAINING`, a big 10-to-1 countdown |
-| Widgets | `KILL STREAK n` on the right from 2 kills, and a faint pulsing red tint from 5 |
+| Widgets | a `STREAK` chip above the cards from 2 kills, with a bar filling toward the next milestone, and a faint pulsing red tint from 5 |
 
 Extras per banner, set in the theme: screen flash, camera shake (`earthquake`) and a sound. Each has its own switch.
 
@@ -35,7 +35,7 @@ Set in `server.cfg` or live over rcon. All default to on.
 
 ## Restyling
 
-Everything about how a banner looks is in `gsc/maps/mp/shotcaller/_hud_theme.gsc`: one `case` per id with the words, colors, icon, hold time, weight, sound, shake and flash. Adding a banner is a new case plus an id in `allIds()`. Placement and animation are in `_hud.gsc` (`ensure`, `playBanner`). Fonts that read well here: `hudbig` for titles, `objective` for subtitles and labels, `bigfixed` for numbers. Shaders known to exist in-game and take a tint: `white`, `gradient_fadein`, `line_horizontal`, `killiconheadshot`, `killiconmelee`, `killiconsuicide`, `waypoint_kill`.
+Everything about how a banner looks is in `gsc/maps/mp/shotcaller/_hud_theme.gsc`: one `case` per id with the words, colors, icon, hold time, weight, sound, shake and flash. Adding a banner is a new case plus an id in `allIds()`. Placement, sizing and animation are in `_hud.gsc`: `ensure` builds the column, `fillCard` sizes a card to its text and weight, `animateCard` brings it in, `fadeCard` slides and dims it. Keep titles short: a card is about a fifth of the screen wide and the title shrinks to fit. Fonts that read well here: `hudbig` for titles, `objective` for subtitles and labels, `bigfixed` for numbers. Shaders known to exist in-game and take a tint: `white`, `gradient_fadein`, `line_horizontal`, `killiconheadshot`, `killiconmelee`, `killiconsuicide`, `waypoint_kill`.
 
 ## End-of-match map vote
 
