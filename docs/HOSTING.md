@@ -123,6 +123,18 @@ Then forward UDP `net_port` from the router (or UPnP) to this machine, as the gu
 
 The guest keeps its first card on the cut-off network, so the old forward (`127.0.0.1:2222`) and the tooling that uses it still work and `untap` always has a way in; the bridge is a second card. What changes: the IW4MAdmin page is at `10.44.0.2:1624` with `10.44.0.1` allowed, the sidecar calls the model at `10.44.0.1:8081`, and `iw4x-guest-relay` is off because the game port is forwarded straight through. Inbound traffic to the machine's `net_port` is redirected to the guest, so the host no longer owns that port.
 
+## Privacy: the address is not the machine
+
+Running the server on a LAN, a tailnet or with no forward changes nothing on this machine's safety and costs nothing: the VM cannot reach the host, the LAN or the tailnet, and nothing on the internet can reach the game. That is the default this repo ships with (`LAN_ONLY=1`, the relay on loopback).
+
+Listing it publicly is a different trade. The server advertises the address players connect to, so the home IP becomes public: anyone can see it in the browser and in every third-party tracker, resolve it to a city and an ISP, scan it, and target it. The VM protects what is behind the address; it cannot hide the address. Nothing in this repo changes that — only putting the public side somewhere else does:
+
+- a **VPS** running the whole stack, with the game master calling a model over a tunnel or not at all;
+- a **relay** (a small VPS or a UDP tunnel) that forwards the game port, so players see the relay's address while the server stays here;
+- keeping it **private** (LAN or tailnet), which is what the default configuration is for.
+
+If this machine does go public, only UDP `net_port` should be forwarded, and `ops/vm/janitor.sh` only maintains the forward when `/mnt/nvme8tb/iw4x-vm/public` contains `1`, so removing the forward also removes the thing that would put it back.
+
 ## Living with it
 
 What the server costs on this machine, measured while idle with ten bots: `qemu-system-x86_64` at about 0.3 of a core and 2.8 GB RSS of the 4 GB it is given, the guest's game process at ~15% of one vCPU, IW4MAdmin ~0.4 GB and under 1%, the sidecar near nothing, ~30 GB of the disk for the guest image plus the 327 MB log it grows, and under 1 Mbit/s of node traffic. The model is the one large cost: 50 GB of VRAM and a two-second GPU burst per call, only while it is loaded.

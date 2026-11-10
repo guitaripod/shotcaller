@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "shotcaller"
-version = "0.1.0"
+version = "0.2.0"
 description = "An LLM game master for Bot Warfare bots on IW4x servers: sets intent, never aim or movement."
 readme = "README.md"
 license = { text = "GPL-3.0-or-later" }

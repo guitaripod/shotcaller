@@ -79,8 +79,14 @@ print(kv.get("clients", "0"))
 PY
 }
 
+# Whether this machine is meant to be public at all: a file named `public` holding 1 turns the forward on.
+is_public() {
+  [ -f "$DIR/public" ] && [ "$(cat "$DIR/public")" = 1 ]
+}
+
 # Whether the router still forwards the game port to this machine, and the address it hands out.
 port_forward() {
+  is_public || return 0
   command -v upnpc >/dev/null 2>&1 || return 0
 
   if ! timeout 20 upnpc -l 2>/dev/null | grep -q "UDP $GAME_PORT->.*:$GAME_PORT"; then
