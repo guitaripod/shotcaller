@@ -3,6 +3,7 @@ set -euo pipefail
 
 DIR="${VM_DIR:-/mnt/nvme8tb/iw4x-vm}"
 GUEST="${VM_GUEST_IP:-10.44.0.2}"
+RELAY="${VM_RELAY_IP:-127.0.0.1}"
 GAME_PORT="${VM_GAME_PORT:-28961}"
 HOST_LAN="${VM_HOST_LAN:-192.168.1.197}"
 BACKUP_DIR="${VM_BACKUP_DIR:-/mnt/nvme8tb/iw4x-backup}"
@@ -40,15 +41,32 @@ state_set() {
   mv "$tmp" "$STATE"
 }
 
-# Runs a command in the guest over the bridge address.
+# Whether this machine is meant to be public at all: a file named `public` holding 1 turns the forward on.
+is_public() {
+  [ -f "$DIR/public" ] && [ "$(cat "$DIR/public")" = 1 ]
+}
+
+# The address the game answers on: the bridge when public, the relay in front of the guest when not.
+game_host() {
+  if is_public; then echo "$GUEST"; else echo "$RELAY"; fi
+}
+
+# The ssh address of the guest, which moves with the network mode.
+ssh_target() {
+  if is_public; then echo "22 iw4x@$GUEST"; else echo "2222 iw4x@$RELAY"; fi
+}
+
+# Runs a command in the guest over whichever address the current mode uses.
 guest() {
-  ssh -p 22 -i "$DIR/id_ed25519" -o StrictHostKeyChecking=accept-new -o UserKnownHostsFile="$DIR/known_hosts" \
-    -o BatchMode=yes -o ConnectTimeout=5 -o LogLevel=ERROR "iw4x@$GUEST" "$@"
+  local port host
+  read -r port host <<<"$(ssh_target)"
+  ssh -p "$port" -i "$DIR/id_ed25519" -o StrictHostKeyChecking=accept-new -o UserKnownHostsFile="$DIR/known_hosts" \
+    -o BatchMode=yes -o ConnectTimeout=5 -o LogLevel=ERROR "$host" "$@"
 }
 
 # Whether the game answers a status query, which is the cheapest proof that the whole chain is up.
 game_up() {
-  python3 - "$GUEST" "$GAME_PORT" <<'PY'
+  python3 - "$(game_host)" "$GAME_PORT" <<'PY'
 import socket, sys
 s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
 s.settimeout(2)
@@ -63,7 +81,7 @@ PY
 
 # Whether anybody is playing, so maintenance never interrupts a match.
 humans() {
-  python3 - "$GUEST" "$GAME_PORT" <<'PY'
+  python3 - "$(game_host)" "$GAME_PORT" <<'PY'
 import re, socket, sys
 s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
 s.settimeout(2)
@@ -77,11 +95,6 @@ info = data.decode("latin-1").split("\n")[1]
 kv = dict(zip(*[iter(info.split("\\")[1:])] * 2))
 print(kv.get("clients", "0"))
 PY
-}
-
-# Whether this machine is meant to be public at all: a file named `public` holding 1 turns the forward on.
-is_public() {
-  [ -f "$DIR/public" ] && [ "$(cat "$DIR/public")" = 1 ]
 }
 
 # Whether the router still forwards the game port to this machine, and the address it hands out.
@@ -142,11 +155,13 @@ backup() {
   fi
 
   mkdir -p "$today"
-  rsync -a -e "ssh -p 22 -i $DIR/id_ed25519 -o UserKnownHostsFile=$DIR/known_hosts -o BatchMode=yes -o LogLevel=ERROR" \
-    "iw4x@$GUEST:server/game/userraw/server.cfg" \
-    "iw4x@$GUEST:iw4madmin/app/Database/Database.db" \
-    "iw4x@$GUEST:.config/shotcaller/shotcaller.toml" \
-    "iw4x@$GUEST:server/game/userraw/scriptdata/shotcaller/" \
+  local port
+  port="$(ssh_target | cut -d" " -f1)"
+  rsync -a -e "ssh -p $port -i $DIR/id_ed25519 -o UserKnownHostsFile=$DIR/known_hosts -o BatchMode=yes -o LogLevel=ERROR" \
+    "iw4x@$( [ "$port" = 22 ] && echo "$GUEST" || echo "$RELAY" ):server/game/userraw/server.cfg" \
+    "iw4x@$( [ "$port" = 22 ] && echo "$GUEST" || echo "$RELAY" ):iw4madmin/app/Database/Database.db" \
+    "iw4x@$( [ "$port" = 22 ] && echo "$GUEST" || echo "$RELAY" ):.config/shotcaller/shotcaller.toml" \
+    "iw4x@$( [ "$port" = 22 ] && echo "$GUEST" || echo "$RELAY" ):server/game/userraw/scriptdata/shotcaller/" \
     "$today/" 2>/dev/null || say "WARN the backup copy failed"
 
   state_set backup "$stamp"
@@ -193,7 +208,7 @@ report() {
   players="$(humans)"
   ip="$(timeout 20 upnpc -l 2>/dev/null | sed -n 's/^ExternalIPAddress = //p' | head -1)"
 
-  if ! ip link show "${VM_TAP:-iw4x0}" >/dev/null 2>&1; then
+  if is_public && ! ip link show "${VM_TAP:-iw4x0}" >/dev/null 2>&1; then
     say "WARN the tap is missing: sudo ops/vm/net.sh up"
   fi
 
