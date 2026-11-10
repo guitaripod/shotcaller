@@ -1,0 +1,9 @@
+[Unit]
+Description=IW4x janitor: keeps the forward, the guest, the log and the backups in order
+After=network-online.target
+
+[Service]
+Type=oneshot
+Environment=VM_DIR=@DIR@
+ExecStart=@REPO@/ops/vm/janitor.sh run
+Nice=10

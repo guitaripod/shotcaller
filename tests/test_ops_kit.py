@@ -263,3 +263,16 @@ def test_the_guest_guard_keeps_the_vm_off_this_machine():
     assert 'iifname != "iw4x0" udp dport 28961 dnat ip to 10.44.0.2:28961' in rules
     assert "tcp dport 8081 accept" in rules
     assert "policy accept" in rules and "hook input" in rules and "hook forward" in rules
+
+
+def test_the_janitor_covers_forward_guest_log_and_backups():
+    script = OPS / "vm" / "janitor.sh"
+    out = subprocess.run(["bash", "-n", str(script)], capture_output=True, text=True)
+    assert out.returncode == 0, out.stderr
+    text = script.read_text()
+    for needle in ("upnpc -a", "restarting iw4x-vm", "games_mp.log.1", "iw4x-backup", "getinfo"):
+        assert needle in text
+
+    unit = (OPS / "systemd" / "iw4x-janitor.service.in").read_text()
+    timer = (OPS / "systemd" / "iw4x-janitor.timer.in").read_text()
+    assert "janitor.sh run" in unit and "OnUnitActiveSec=5min" in timer

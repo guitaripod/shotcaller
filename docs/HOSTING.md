@@ -123,6 +123,21 @@ Then forward UDP `net_port` from the router (or UPnP) to this machine, as the gu
 
 The guest keeps its first card on the cut-off network, so the old forward (`127.0.0.1:2222`) and the tooling that uses it still work and `untap` always has a way in; the bridge is a second card. What changes: the IW4MAdmin page is at `10.44.0.2:1624` with `10.44.0.1` allowed, the sidecar calls the model at `10.44.0.1:8081`, and `iw4x-guest-relay` is off because the game port is forwarded straight through. Inbound traffic to the machine's `net_port` is redirected to the guest, so the host no longer owns that port.
 
+## Living with it
+
+What the server costs on this machine, measured while idle with ten bots: `qemu-system-x86_64` at about 0.3 of a core and 2.8 GB RSS of the 4 GB it is given, the guest's game process at ~15% of one vCPU, IW4MAdmin ~0.4 GB and under 1%, the sidecar near nothing, ~30 GB of the disk for the guest image plus the 327 MB log it grows, and under 1 Mbit/s of node traffic. The model is the one large cost: 50 GB of VRAM and a two-second GPU burst per call, only while it is loaded.
+
+`iw4x-janitor.timer` (user, every five minutes) keeps the parts that do not heal themselves in order:
+
+- re-adds the UDP forward when the router forgot it after a reboot, and records the WAN address when it changes;
+- asks the guest for a status three times and restarts `iw4x-vm` when it stays silent, with a fifteen-minute cooldown;
+- rotates `games_mp.log` past 256 MB, but only when nobody is playing, then restarts the game server so the handle is fresh;
+- copies the admin database, the server config, the sidecar config and its journal to `/mnt/nvme8tb/iw4x-backup/<date>` once a day and keeps fourteen days.
+
+`ops/vm/janitor.sh check` prints the current state: whether the guest answers, how many humans are on, the log size, the WAN address, the guest's disk and the four services.
+
+What is still manual: the guest image itself is not backed up, a router that drops the forward *and* refuses UPnP needs the rule re-entered by hand, and `sudo ops/vm/net.sh up` after a reboot if `iw4x-net` was ever disabled.
+
 ## Admin and anti-cheat
 
 `ops/iw4madmin/install.sh <dir> <game dir> <port> [--allow <address>]` installs a pinned, checksum-verified IW4MAdmin release with its own .NET runtime (nothing system-wide changes), answers the first-run wizard, and patches what the wizard cannot ask: web front on and whitelisted, bots ignored, the server's `games_mp.log` as its log, and the stats plugin's server-side anti-cheat on. It installs `iw4madmin.service` and copies `_customcallbacks.gsc` into the server's `userraw/scripts`, which is what feeds hit and kill data to the anti-cheat. The server needs `g_log` and `g_logSync 1` (the server template sets both).
