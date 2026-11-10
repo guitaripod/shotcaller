@@ -372,6 +372,38 @@ announceAll( id )
 	}
 }
 
+/// The score at which the match point banner fires: three kills from the limit, but never below 85 percent of it.
+matchPoint( limit )
+{
+	near = limit - 300;
+
+	if ( near < limit * 0.85 )
+	{
+		return limit * 0.85;
+	}
+
+	return near;
+}
+
+/// Shows a banner id to every human with a subtitle made at runtime, such as the real score limit.
+announceAllSub( id, sub )
+{
+	spec = maps\mp\shotcaller\_hud_theme::spec( id );
+
+	if ( !isdefined( spec ) || !maps\mp\shotcaller\_hud::groupOn( spec.group ) )
+	{
+		return;
+	}
+
+	spec.sub = sub;
+	players = humans();
+
+	for ( i = 0; i < players.size; i++ )
+	{
+		players[ i ] maps\mp\shotcaller\_hud::showBanner( spec, false );
+	}
+}
+
 /// Shows the countdown number to every human.
 countAll( n )
 {
@@ -409,10 +441,10 @@ flowScore()
 			players[ i ] leadCheck( allies, axis );
 		}
 
-		if ( limit > 0 && !pointShown && ( allies >= limit * 0.85 || axis >= limit * 0.85 ) )
+		if ( limit > 0 && !pointShown && ( allies >= matchPoint( limit ) || axis >= matchPoint( limit ) ) )
 		{
 			pointShown = true;
-			announceAll( "matchpoint" );
+			announceAllSub( "matchpoint", "FIRST TO " + limit );
 		}
 	}
 }

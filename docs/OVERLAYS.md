@@ -12,7 +12,7 @@ A banner is a compact card in a column on the left of the screen, clear of the m
 | Streak (kills without dying) | `KILLING SPREE` 3, `RAMPAGE` 5, `DOMINATING` 7, `UNSTOPPABLE` 10, `GODLIKE` 15, `SLAYER OF HELL` 20 |
 | Single kill | `FIRST BLOOD`, `SHUTDOWN` (ended an enemy streak of 5 or more), `GLORY KILL` (knife), `PAYBACK` (killed whoever killed you last), `LONG SHOT` (1800+ units), `HEADSHOT`, `BLOWN APART` (explosive), `POINT BLANK`, `BACK FROM HELL` (a kill after 4+ deaths in a row) |
 | Death | red screen flash, `STREAK LOST` after a streak of 3 or more |
-| Match flow | `FIGHT` with the map and mode, `YOU TAKE THE LEAD`, `LEAD LOST`, `MATCH POINT` at 85% of the score limit, `ONE MINUTE REMAINING`, `30 SECONDS REMAINING`, a big 10-to-1 countdown |
+| Match flow | `FIGHT` with the map and mode, `YOU TAKE THE LEAD`, `LEAD LOST`, `MATCH POINT` with the real score limit when a team is three kills from it, `ONE MINUTE REMAINING`, `30 SECONDS REMAINING`, a big 10-to-1 countdown |
 | Widgets | a `STREAK` chip above the cards from 2 kills, with a bar filling toward the next milestone, and a faint pulsing red tint from 5 |
 
 Extras per banner, set in the theme: screen flash, camera shake (`earthquake`) and a sound. Each has its own switch.
