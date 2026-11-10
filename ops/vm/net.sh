@@ -52,7 +52,7 @@ table inet $TABLE {
 
   chain prerouting {
     type nat hook prerouting priority dstnat; policy accept;
-    iifname != { "lo", "$TAP" } udp dport $GAME_PORT dnat ip to $GUEST_IP:$GAME_PORT
+    iifname != "$TAP" udp dport $GAME_PORT dnat ip to $GUEST_IP:$GAME_PORT
   }
 }
 EOF
