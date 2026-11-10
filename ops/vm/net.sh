@@ -77,6 +77,7 @@ up() {
   ruleset | nft --check -f -
   nft list table inet "$TABLE" >/dev/null 2>&1 && nft delete table inet "$TABLE"
   ruleset | nft -f -
+  allow_through_docker
   echo "guest network: $BRIDGE $HOST_IP/24, tap $TAP, guest $GUEST_IP, game port $GAME_PORT"
 }
 
@@ -85,6 +86,7 @@ down() {
   [ "$(id -u)" = 0 ] || { echo "net.sh down needs root: sudo $0 down" >&2; exit 1; }
 
   nft list table inet "$TABLE" >/dev/null 2>&1 && nft delete table inet "$TABLE"
+  drop_through_docker
 
   if ip link show "$TAP" >/dev/null 2>&1; then
     ip link set "$TAP" down

@@ -5,6 +5,7 @@ After=network-online.target
 [Service]
 Type=simple
 Environment=VM_DIR=@DIR@
+Environment=VM_NET=@NET@
 ExecStart=@REPO@/ops/vm/vm.sh run
 ExecStop=@REPO@/ops/vm/vm.sh stop
 Restart=on-failure

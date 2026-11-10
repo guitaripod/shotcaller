@@ -5,28 +5,21 @@ GUEST_IP="${VM_GUEST_IP:-10.44.0.2}"
 HOST_IP="${VM_HOST_IP:-10.44.0.1}"
 DNS="${VM_GUEST_DNS:-9.9.9.9}"
 LLM_PORT="${VM_LLM_PORT:-8081}"
+TAP_MAC="${VM_TAP_MAC:-52:54:00:12:34:57}"
 BASE="$HOME/server"
 CONFIG="$HOME/.config/shotcaller/shotcaller.toml"
 
-# The guest's one interface, whatever the cloud image called it.
-iface() {
-  ip -o link show | awk -F': ' '$2 != "lo" { print $2; exit }'
-}
-
-# Gives the guest a fixed address on the private bridge, ahead of the DHCP file cloud-init writes at boot.
+# Gives the second card, the one on the bridge, its fixed address; the first card keeps the host forward working.
 write_network() {
-  sudo tee "/etc/systemd/network/05-iw4x.network" >/dev/null <<EOF
+  sudo tee "/etc/systemd/network/05-iw4x.network" >/dev/null <<NETWORK
 [Match]
-Name=$(iface)
+MACAddress=$TAP_MAC
 
 [Network]
 Address=$GUEST_IP/24
 Gateway=$HOST_IP
 DNS=$DNS
-EOF
-  sudo tee /etc/cloud/cloud.cfg.d/99-iw4x-network.cfg >/dev/null <<'EOF'
-network: {config: disabled}
-EOF
+NETWORK
 }
 
 # The guest has a resolver now, so stop the fail-fast stub that keeps the game from hanging on a dropped query.
@@ -41,7 +34,7 @@ rewrite_sidecar() {
   sed -i "s#^base_url = .*#base_url = \"http://$HOST_IP:$LLM_PORT/v1\"#" "$CONFIG"
 }
 
-# Lets the host reach the IW4MAdmin page over the bridge, and drops the forward address it no longer uses.
+# Lets the host reach the IW4MAdmin page over the bridge.
 allow_admin() {
   [ -d "$HOME/iw4madmin/app" ] || return 0
   python3 - "$HOME/iw4madmin/app" <<'PY'
@@ -54,7 +47,7 @@ module.patch(Path(sys.argv[1]), Path.home() / "server/game/userraw/games_mp.log"
 PY
 }
 
-# Leaves the tunnel relay switched off: on the bridge the game port is forwarded straight to the guest.
+# The game port is forwarded straight to the bridge now, so the tunnel relay would only compete for it.
 drop_relay() {
   systemctl --user disable --now iw4x-guest-relay 2>/dev/null || true
 }
@@ -70,4 +63,4 @@ rewrite_sidecar
 allow_admin
 drop_relay
 list_publicly
-echo "guest prepared for $GUEST_IP on the bridge"
+echo "guest prepared for $GUEST_IP on the bridge card"

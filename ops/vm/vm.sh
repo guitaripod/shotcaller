@@ -86,10 +86,13 @@ closed_net() {
   printf '%s\n' -netdev "user,id=n0,restrict=on,$forwards" -device virtio-net-pci,netdev=n0
 }
 
-# Prints the bridge network: the tap made by net.sh, which gives the guest its own address so the server can
-# announce itself to the other nodes and list, and so players keep their real addresses.
+# Prints the bridge network: the cut-off network stays on the first card (so the host can still reach the guest
+# and undo this), and the tap made by net.sh is a second card with the guest's public address. The server's
+# default route goes out the tap, so it can announce itself to the other nodes, and players keep their addresses.
 tap_net() {
-  printf '%s\n' -netdev "tap,id=n0,ifname=${VM_TAP:-iw4x0},script=no,downscript=no" -device virtio-net-pci,netdev=n0
+  closed_net
+  printf '%s\n' -netdev "tap,id=n1,ifname=${VM_TAP:-iw4x0},script=no,downscript=no" \
+    -device "virtio-net-pci,netdev=n1,mac=${VM_TAP_MAC:-52:54:00:12:34:57}"
 }
 
 # Prints the full qemu argument list for a mode.
@@ -205,7 +208,7 @@ provision() {
 # Boots the isolated production guest in the foreground.
 run() {
   local -a a
-  mapfile -t a < <(args run)
+  mapfile -t a < <(args "${VM_NET:-run}")
   exec qemu-system-x86_64 "${a[@]}"
 }
 
@@ -233,13 +236,61 @@ unit() {
     [ -d "$d" ] && hidden="$hidden$d "
   done
   local name="${1:-vm}"
-  sed -e "s#@DIR@#$DIR#g" -e "s#@REPO@#$REPO#g" -e "s#@PORT@#$GAME_PORT#g" -e "s#@HIDDEN@#${hidden% }#g" "$OPS/systemd/iw4x-$name.service.in"
+  sed -e "s#@DIR@#$DIR#g" -e "s#@REPO@#$REPO#g" -e "s#@PORT@#$GAME_PORT#g" -e "s#@HIDDEN@#${hidden% }#g" \
+    -e "s#@NET@#${2:-run}#g" "$OPS/systemd/iw4x-$name.service.in"
 }
 
 # Prints the server.env lines that point update.sh at the guest.
 env_lines() {
   printf 'REMOTE_SSH="-p %s -i %s -o UserKnownHostsFile=%s -o BatchMode=yes -o LogLevel=ERROR"\n' "$(guest_port)" "$DIR/id_ed25519" "$DIR/known_hosts"
   printf 'REMOTE_USER="iw4x"\nREMOTE_HOST="%s"\nREMOTE_BASE="server"\n' "$(guest_host)"
+}
+
+# Moves the guest onto the bridge: prepare its second card over the old address, switch the unit, wait for the tap.
+tap() {
+  echo "preparing the guest's bridge card"
+  VM_NET=run guest "bash -s" < "$OPS/vm/guest-tap.sh"
+
+  echo "switching the unit to the tap network"
+  systemctl --user stop iw4x-relay iw4x-vm
+  VM_NET=tap "$REPO/ops/vm/vm.sh" unit vm tap > "$HOME/.config/systemd/user/iw4x-vm.service"
+  systemctl --user daemon-reload
+  systemctl --user start iw4x-vm
+
+  for _ in $(seq 1 60); do
+    if VM_NET=tap guest true 2>/dev/null; then
+      echo "guest is up on $(guest_host) and still reachable on the old address"
+      return
+    fi
+
+    sleep 2
+  done
+
+  echo "the guest did not answer on $(guest_host); the old address still works, so run untap" >&2
+  exit 1
+}
+
+# Puts the guest back behind the relay: drop its bridge card, switch the unit back and wait for the forward.
+untap() {
+  echo "removing the guest's bridge card"
+  VM_NET=run guest 'sudo rm -f /etc/systemd/network/05-iw4x.network; sudo rm -f /etc/resolv.conf; echo "nameserver 127.0.0.1" | sudo tee /etc/resolv.conf >/dev/null; sed -i "s#^base_url = .*#base_url = \"http://10.0.2.100:8081/v1\"#" $HOME/.config/shotcaller/shotcaller.toml; systemctl --user enable --now iw4x-guest-relay; sed -i "s#^LAN_ONLY=.*#LAN_ONLY=\"1\"#" $HOME/server/server.env'
+
+  systemctl --user stop iw4x-vm
+  VM_NET=run "$REPO/ops/vm/vm.sh" unit vm run > "$HOME/.config/systemd/user/iw4x-vm.service"
+  systemctl --user daemon-reload
+  systemctl --user start iw4x-vm iw4x-relay
+
+  for _ in $(seq 1 60); do
+    if VM_NET=run guest true 2>/dev/null; then
+      echo "guest is back behind the relay on UDP $GAME_PORT"
+      return
+    fi
+
+    sleep 2
+  done
+
+  echo "the guest did not answer on the forwarded ssh port; see $DIR/console.log" >&2
+  exit 1
 }
 
 cmd="${1:-}"
