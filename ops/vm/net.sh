@@ -54,8 +54,28 @@ table inet $TABLE {
     type nat hook prerouting priority dstnat; policy accept;
     iifname != "$TAP" udp dport $GAME_PORT dnat ip to $GUEST_IP:$GAME_PORT
   }
+
+  chain output {
+    type nat hook output priority dstnat; policy accept;
+    ip daddr 127.0.0.1 udp dport $GAME_PORT dnat ip to $GUEST_IP:$GAME_PORT
+  }
 }
 EOF
+}
+
+# Docker drops everything it did not forward itself, which would also drop the guest's card, so it is let
+# through the chain Docker reserves for that.
+allow_through_docker() {
+  command -v iptables >/dev/null 2>&1 || return 0
+  iptables -C DOCKER-USER -i "$TAP" -j ACCEPT 2>/dev/null || iptables -I DOCKER-USER -i "$TAP" -j ACCEPT
+  iptables -C DOCKER-USER -o "$TAP" -j ACCEPT 2>/dev/null || iptables -I DOCKER-USER -o "$TAP" -j ACCEPT
+}
+
+# Removes the two chain entries again, if Docker is there.
+drop_through_docker() {
+  command -v iptables >/dev/null 2>&1 || return 0
+  iptables -D DOCKER-USER -i "$TAP" -j ACCEPT 2>/dev/null || true
+  iptables -D DOCKER-USER -o "$TAP" -j ACCEPT 2>/dev/null || true
 }
 
 # Creates the bridge and the tap qemu can open, then loads the rules after checking them.
