@@ -121,7 +121,7 @@ ops/vm/vm.sh tap                                             # guest prep, unit 
 
 Then forward UDP `net_port` from the router (or UPnP) to this machine, as the guest's address is private to the bridge. With that in place `vm.sh tap` sets `LAN_ONLY=0`, so the server announces itself to the IW4x nodes and shows up in the browser. `ops/vm/vm.sh untap` puts it back behind the relay; `ops/vm/net.sh down` removes the bridge and the rules.
 
-What changes: ssh to the guest moves to `10.44.0.2:22` (the tooling follows it), the IW4MAdmin page is at `10.44.0.2:1624` with `10.44.0.1` allowed, the sidecar calls the model at `10.44.0.1:8081`, and `iw4x-guest-relay` is off because the game port is forwarded straight through.
+The guest keeps its first card on the cut-off network, so the old forward (`127.0.0.1:2222`) and the tooling that uses it still work and `untap` always has a way in; the bridge is a second card. What changes: the IW4MAdmin page is at `10.44.0.2:1624` with `10.44.0.1` allowed, the sidecar calls the model at `10.44.0.1:8081`, and `iw4x-guest-relay` is off because the game port is forwarded straight through. Inbound traffic to the machine's `net_port` is redirected to the guest, so the host no longer owns that port.
 
 ## Admin and anti-cheat
 
