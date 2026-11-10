@@ -1,6 +1,6 @@
 # shotcaller
 
-An LLM game master, DOOM-style overlays and an end-of-match map vote for [IW4x](https://iw4x.io) (Call of Duty: Modern Warfare 2) servers running [Bot Warfare](https://github.com/ineedbots/iw4x_bot_warfare) bots.
+An LLM game master, compact kill overlays and an end-of-match map vote for [IW4x](https://iw4x.io) (Call of Duty: Modern Warfare 2) servers running [Bot Warfare](https://github.com/ineedbots/iw4x_bot_warfare) bots.
 
 The LLM never aims, moves or shoots. Bot Warfare keeps all of that, including how bots roam the map. shotcaller changes only the things a model can actually improve: how sharp each bot is, a short mission to where you keep dying, and the server's bot settings. It is built so that a better model, dropped in behind one alias, does the job better without changing any code.
 
@@ -28,11 +28,11 @@ The surface is small on purpose. There is no chat either: model-written banter w
 
 ## Overlays and map vote (no model needed)
 
-The GSC mod also draws kill banners (`DOUBLE KILL` to `RIP AND TEAR`, `HEADSHOT`, `GLORY KILL`, `PAYBACK`, `SHUTDOWN`, streaks up to `SLAYER OF HELL`), a streak widget with a pulsing red tint, match-flow calls (`FIGHT`, `MATCH POINT`, clock warnings and a countdown, lead changes), and a full-screen **map vote** at the end of every match: a grid of every map you run, a mouse cursor you click with, live counts, a timer and the game master's recommendation. Everything is switchable and previewable (`rcon set sc_hud_preview all`). See [docs/OVERLAYS.md](docs/OVERLAYS.md).
+The GSC mod draws kills and streaks as a column of compact cards on the left — a plate sized to its text, a tier-coloured accent bar, an icon where it helps, and a chain of three that slide and dim — plus a streak chip with a bar toward the next milestone, match-flow calls (`FIGHT`, `MATCH POINT`, clock warnings and a countdown), and a full-screen **map vote** at the end of every match: a grid of every map you run, clickable, with live counts, a timer and the game master's recommendation. Everything is switchable and previewable (`rcon set sc_hud_preview all`). See [docs/OVERLAYS.md](docs/OVERLAYS.md).
 
 ## Bots fill, humans keep their slots
 
-Bot Warfare's fill mode counts humans and bots toward one total (`bots_manage_fill`), so every human who joins pushes a bot out and a full room has no bots. The model does not decide how many bots there are. When humans are on both teams, the director holds still: nothing it could do for one side is fair to the other.
+Bot Warfare's fill counts humans and bots toward one total (`bots_manage_fill`), so every human who joins pushes a bot out. The shipped size is 12 slots with 10 bots: the browser shows two free slots and a human always fits. The model does not decide how many bots there are, and when humans are on both teams the director holds still: nothing it could do for one side is fair to the other.
 
 ## Fair by construction
 
@@ -62,7 +62,7 @@ shotcaller run           # run the director (see systemd/shotcaller.service)
 
 ## Running it for other people
 
-`ops/` is a kit for an always-on server: installer, systemd units, update routine, watchdog and an IW4MAdmin setup with the server-side anti-cheat. [docs/HOSTING.md](docs/HOSTING.md) covers hosting at home or on a VPS, ports, bandwidth, IW4x version drift and what a fresh client downloads.
+`ops/` is a kit for an always-on server: installer, systemd units, hourly update, watchdog, a janitor that keeps the forward, the guest, the log and the backups in order, and IW4MAdmin with the server-side anti-cheat. The default is private (LAN or tailnet); listing it publicly publishes your home IP, which no part of this repo can hide — see [docs/HOSTING.md](docs/HOSTING.md) for the ports, the VM, the VPS and relay options, and the privacy trade.
 
 ## Docs
 - [Hosting and operations](docs/HOSTING.md)
