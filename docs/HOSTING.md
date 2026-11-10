@@ -106,7 +106,22 @@ What this mode cannot do, because it is the price of the isolation:
 - **Updates come from the host.** The guest cannot download anything, so `update.sh` pushes the IW4x files from the Steam install into the guest and restarts the server there, still only when no one is playing.
 - **A little more latency**, about a millisecond for the tunnel.
 
-A public server needs the other design: a tap interface on a private bridge with `nftables` rules on the host (guest to internet and the model port only, nothing to the LAN, the host or the tailnet), which keeps source addresses and lets the server reach the master. That needs root once, so it is not built; a VPS gives the same isolation more simply.
+## Listing it publicly from home
+
+A listed server needs outbound network, so it cannot stay behind `restrict=on`. `ops/vm/net.sh` builds the other design: a private bridge with no uplink port, a tap for the guest, and an nftables guard that lets the guest reach the internet and the model on the host and nothing else — not this machine's services, not the LAN, not the tailnet. Players arrive on UDP `net_port` and are forwarded to the guest with their real addresses, so IP bans work again and the game sees each player separately.
+
+That needs root twice: once to make the bridge, the tap and the rules, and once to install the unit that rebuilds them at boot.
+
+```sh
+sudo ops/vm/net.sh up                                        # bridge, tap, nft guard
+sudo ops/vm/net.sh unit > /etc/systemd/system/iw4x-net.service
+sudo systemctl enable --now iw4x-net                         # after `net.sh down`, the unit brings it back
+ops/vm/vm.sh tap                                             # guest prep, unit rewritten for the tap, restart
+```
+
+Then forward UDP `net_port` from the router (or UPnP) to this machine, as the guest's address is private to the bridge. With that in place `vm.sh tap` sets `LAN_ONLY=0`, so the server announces itself to the IW4x nodes and shows up in the browser. `ops/vm/vm.sh untap` puts it back behind the relay; `ops/vm/net.sh down` removes the bridge and the rules.
+
+What changes: ssh to the guest moves to `10.44.0.2:22` (the tooling follows it), the IW4MAdmin page is at `10.44.0.2:1624` with `10.44.0.1` allowed, the sidecar calls the model at `10.44.0.1:8081`, and `iw4x-guest-relay` is off because the game port is forwarded straight through.
 
 ## Admin and anti-cheat
 

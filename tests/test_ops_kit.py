@@ -245,3 +245,21 @@ def test_the_host_side_never_sends_to_an_address_it_has_not_heard_from():
     side.datagram_received(b"hello", ("203.0.113.9", 4000))
     side.reply(1, b"ok")
     assert sent == [(b"ok", ("203.0.113.9", 4000))]
+
+
+def test_the_tap_network_gives_the_guest_its_own_address():
+    net = next(line for line in vm_args("tap") if line.startswith("tap,"))
+    options = net.split(",")
+    assert "ifname=iw4x0" in options and "script=no" in options
+    assert not any(o.startswith(("hostfwd=", "guestfwd=")) for o in options)
+
+
+def test_the_guest_guard_keeps_the_vm_off_this_machine():
+    out = subprocess.run([str(OPS / "vm" / "net.sh"), "plan"], capture_output=True, text=True, env={"PATH": "/usr/bin:/bin"})
+    assert out.returncode == 0, out.stderr
+    rules = out.stdout
+    assert "table inet iw4x" in rules
+    assert "ip daddr { 10.0.0.0/8, 172.16.0.0/12, 192.168.0.0/16, 169.254.0.0/16, 100.64.0.0/10 } drop" in rules
+    assert "udp dport 28961 dnat ip to 10.44.0.2:28961" in rules
+    assert "tcp dport 8081 accept" in rules
+    assert "policy accept" in rules and "hook input" in rules and "hook forward" in rules

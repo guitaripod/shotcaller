@@ -23,7 +23,7 @@ EXCLUDES=(
 # Prints where the server copy lives: a directory, or user@host:path when REMOTE_SSH names the guest it runs in.
 target() {
   if [ -n "${REMOTE_SSH:-}" ]; then
-    echo "$REMOTE_USER@127.0.0.1:${REMOTE_BASE:-server}/game/"
+    echo "$REMOTE_USER@${REMOTE_HOST:-127.0.0.1}:${REMOTE_BASE:-server}/game/"
   else
     echo "$BASE/game/"
   fi
@@ -41,7 +41,7 @@ sync_copy() {
 # Restarts the game server unit, inside the guest when there is one.
 restart_server() {
   if [ -n "${REMOTE_SSH:-}" ]; then
-    ssh $REMOTE_SSH "$REMOTE_USER@127.0.0.1" "systemctl --user restart $UNIT"
+    ssh $REMOTE_SSH "$REMOTE_USER@${REMOTE_HOST:-127.0.0.1}" "systemctl --user restart $UNIT"
   else
     systemctl --user restart "$UNIT"
   fi

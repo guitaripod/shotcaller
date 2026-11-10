@@ -25,7 +25,7 @@ usage: vm.sh <command>
   install <server dir>   do the install and push step against a guest already booted with the open network
   refresh                push the current code to the running guest and rerun its installer
   run                    boot the isolated production guest in the foreground (what the unit runs)
-  args <open|run>        print the qemu arguments for a mode, one per line
+  args <open|run|tap>    print the qemu arguments for a mode, one per line
   ssh [command]          ssh into the running guest
   stop                   shut the guest down cleanly
   unit [vm|relay]        print the systemd user unit that runs the guest, or the UDP relay in front of it
@@ -36,15 +36,33 @@ EOF
   exit 2
 }
 
-# Runs a command in the guest over the forwarded ssh port with the key made by create.
+# The address the guest answers on: the host forward while it is cut off, its bridge address once it is on the tap.
+guest_host() {
+  if [ "${VM_NET:-run}" = tap ]; then
+    echo "${VM_GUEST_IP:-10.44.0.2}"
+  else
+    echo "127.0.0.1"
+  fi
+}
+
+# The ssh port: the host forward in closed mode, the guest's own 22 on the bridge.
+guest_port() {
+  if [ "${VM_NET:-run}" = tap ]; then
+    echo 22
+  else
+    echo "$SSH_PORT"
+  fi
+}
+
+# Runs a command in the guest over ssh, using the key made by create.
 guest() {
-  ssh -p "$SSH_PORT" -i "$DIR/id_ed25519" -o StrictHostKeyChecking=accept-new -o UserKnownHostsFile="$DIR/known_hosts" \
-    -o BatchMode=yes -o ConnectTimeout=5 -o LogLevel=ERROR iw4x@127.0.0.1 "$@"
+  ssh -p "$(guest_port)" -i "$DIR/id_ed25519" -o StrictHostKeyChecking=accept-new -o UserKnownHostsFile="$DIR/known_hosts" \
+    -o BatchMode=yes -o ConnectTimeout=5 -o LogLevel=ERROR "iw4x@$(guest_host)" "$@"
 }
 
 # Copies files to the guest with rsync over the same ssh connection settings.
 push() {
-  rsync -a -e "ssh -p $SSH_PORT -i $DIR/id_ed25519 -o UserKnownHostsFile=$DIR/known_hosts -o BatchMode=yes -o LogLevel=ERROR" "$@"
+  rsync -a -e "ssh -p $(guest_port) -i $DIR/id_ed25519 -o UserKnownHostsFile=$DIR/known_hosts -o BatchMode=yes -o LogLevel=ERROR" "$@"
 }
 
 # Prints the arguments both modes share: KVM, resources, the disk and no display, one per line.
@@ -68,12 +86,19 @@ closed_net() {
   printf '%s\n' -netdev "user,id=n0,restrict=on,$forwards" -device virtio-net-pci,netdev=n0
 }
 
+# Prints the bridge network: the tap made by net.sh, which gives the guest its own address so the server can
+# announce itself to the other nodes and list, and so players keep their real addresses.
+tap_net() {
+  printf '%s\n' -netdev "tap,id=n0,ifname=${VM_TAP:-iw4x0},script=no,downscript=no" -device virtio-net-pci,netdev=n0
+}
+
 # Prints the full qemu argument list for a mode.
 args() {
   common_args
   case "${1:-}" in
     open) open_net ;;
     run) closed_net ;;
+    tap) tap_net ;;
     *) usage ;;
   esac
 }
@@ -213,8 +238,8 @@ unit() {
 
 # Prints the server.env lines that point update.sh at the guest.
 env_lines() {
-  printf 'REMOTE_SSH="-p %s -i %s -o UserKnownHostsFile=%s -o BatchMode=yes -o LogLevel=ERROR"\n' "$SSH_PORT" "$DIR/id_ed25519" "$DIR/known_hosts"
-  printf 'REMOTE_USER="iw4x"\nREMOTE_BASE="server"\n'
+  printf 'REMOTE_SSH="-p %s -i %s -o UserKnownHostsFile=%s -o BatchMode=yes -o LogLevel=ERROR"\n' "$(guest_port)" "$DIR/id_ed25519" "$DIR/known_hosts"
+  printf 'REMOTE_USER="iw4x"\nREMOTE_HOST="%s"\nREMOTE_BASE="server"\n' "$(guest_host)"
 }
 
 cmd="${1:-}"
@@ -229,6 +254,8 @@ case "$cmd" in
   refresh) refresh ;;
   args) args "$@" ;;
   ssh) guest "$@" ;;
+  tap) tap ;;
+  untap) untap ;;
   stop) stop ;;
   env) env_lines ;;
   unit) unit "$@" ;;
