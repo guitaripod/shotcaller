@@ -54,11 +54,6 @@ table inet $TABLE {
     type nat hook prerouting priority dstnat; policy accept;
     iifname != "$TAP" udp dport $GAME_PORT dnat ip to $GUEST_IP:$GAME_PORT
   }
-
-  chain output {
-    type nat hook output priority dstnat; policy accept;
-    ip daddr 127.0.0.1 udp dport $GAME_PORT dnat ip to $GUEST_IP:$GAME_PORT
-  }
 }
 EOF
 }

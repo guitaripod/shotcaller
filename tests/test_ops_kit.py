@@ -261,6 +261,5 @@ def test_the_guest_guard_keeps_the_vm_off_this_machine():
     assert "table inet iw4x" in rules
     assert "ip daddr { 10.0.0.0/8, 172.16.0.0/12, 192.168.0.0/16, 169.254.0.0/16, 100.64.0.0/10 } drop" in rules
     assert 'iifname != "iw4x0" udp dport 28961 dnat ip to 10.44.0.2:28961' in rules
-    assert "ip daddr 127.0.0.1 udp dport 28961 dnat ip to 10.44.0.2:28961" in rules
     assert "tcp dport 8081 accept" in rules
     assert "policy accept" in rules and "hook input" in rules and "hook forward" in rules
